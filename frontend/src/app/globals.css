@@ -1,0 +1,142 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  background-color: #0a0a0f;
+  color: #fff;
+  overflow-x: hidden;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #6c63ff 0%, #00d4ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-gold {
+  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow animations */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(108, 99, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(108, 99, 255, 0.6);
+  }
+}
+
+@keyframes pulse-red {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 107, 107, 0.7);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+.pulse-red {
+  animation: pulse-red 1.5s ease-in-out infinite;
+}
+.float-animation {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(30, 30, 46, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, #1e1e2e 25%, #2a2a3e 50%, #1e1e2e 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* Bid flash animation */
+@keyframes bid-flash {
+  0% {
+    background-color: rgba(108, 99, 255, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.bid-flash {
+  animation: bid-flash 0.8s ease-out;
+}
+
+/* Custom scrollbar for auction bid list */
+.bid-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.bid-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.bid-scroll::-webkit-scrollbar-thumb {
+  background: rgba(108, 99, 255, 0.4);
+  border-radius: 2px;
+}
