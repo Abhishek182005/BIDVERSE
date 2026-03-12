@@ -29,7 +29,12 @@ import {
   TabPanel,
   Avatar,
 } from "@chakra-ui/react";
-import { StarIcon, TriangleUpIcon, EditIcon } from "@chakra-ui/icons";
+import {
+  StarIcon,
+  TriangleUpIcon,
+  EditIcon,
+  RepeatClockIcon,
+} from "@chakra-ui/icons";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 import { auctionsApi, bidsApi } from "@/lib/api";
@@ -60,6 +65,8 @@ export default function AuctionDetailPage() {
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMyLead, setIsMyLead] = useState(false);
+  const [autoBidActive, setAutoBidActive] = useState(false);
+  const [cancellingAutoBid, setCancellingAutoBid] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
     isOpen: isAutoBidOpen,
@@ -79,6 +86,11 @@ export default function AuctionDetailPage() {
       setIsMyLead(
         a.currentBidder?._id === user?._id || a.currentBidder === user?._id,
       );
+      // Check if user has an active auto-bid
+      bidsApi
+        .getAutoBid(id)
+        .then((res) => setAutoBidActive(!!res.data.data?.isActive))
+        .catch(() => setAutoBidActive(false));
     } catch (err) {
       toast({ title: "Auction not found", status: "error", duration: 3000 });
       router.push("/auctions");
@@ -201,6 +213,18 @@ export default function AuctionDetailPage() {
                   h='full'
                   objectFit='cover'
                   alt={auction.title}
+                  fallback={
+                    <Box
+                      w='full'
+                      h='full'
+                      display='flex'
+                      alignItems='center'
+                      justifyContent='center'
+                      bg='dark.600'
+                    >
+                      <EditIcon boxSize={12} color='whiteAlpha.300' />
+                    </Box>
+                  }
                 />
               ) : (
                 <Center h='full'>
@@ -446,9 +470,10 @@ export default function AuctionDetailPage() {
                     w='full'
                     size='lg'
                     colorScheme='brand'
+                    leftIcon={<TriangleUpIcon />}
                     onClick={onOpen}
                   >
-                    🔨 Place Bid ({minNext}+ cr)
+                    Place Bid ({minNext}+ cr)
                   </Button>
                 )}
               </Box>
@@ -458,16 +483,48 @@ export default function AuctionDetailPage() {
             {auction.status === "active" &&
               !isMyLead &&
               (user?.credits || 0) >= minNext && (
-                <Button
-                  w='full'
-                  size='md'
-                  variant='outline'
-                  colorScheme='purple'
-                  onClick={onAutoBidOpen}
-                  mb={2}
-                >
-                  ⚡ Set Auto-Bid
-                </Button>
+                <HStack mb={2} spacing={2}>
+                  <Button
+                    flex={1}
+                    size='md'
+                    variant='outline'
+                    colorScheme='purple'
+                    onClick={onAutoBidOpen}
+                    leftIcon={<RepeatClockIcon />}
+                  >
+                    {autoBidActive ? "Manage Auto-Bid" : "Set Auto-Bid"}
+                  </Button>
+                  {autoBidActive && (
+                    <Button
+                      size='md'
+                      colorScheme='red'
+                      variant='ghost'
+                      isLoading={cancellingAutoBid}
+                      onClick={async () => {
+                        setCancellingAutoBid(true);
+                        try {
+                          await bidsApi.cancelAutoBid(id);
+                          setAutoBidActive(false);
+                          toast({
+                            title: "Auto-bid cancelled",
+                            status: "info",
+                            duration: 3000,
+                          });
+                        } catch {
+                          toast({
+                            title: "Failed to cancel",
+                            status: "error",
+                            duration: 3000,
+                          });
+                        } finally {
+                          setCancellingAutoBid(false);
+                        }
+                      }}
+                    >
+                      Opt Out
+                    </Button>
+                  )}
+                </HStack>
               )}
 
             <HStack
@@ -497,6 +554,7 @@ export default function AuctionDetailPage() {
         isOpen={isAutoBidOpen}
         onClose={onAutoBidClose}
         auction={auction}
+        onSuccess={(isActive) => setAutoBidActive(isActive)}
       />
     </Container>
   );

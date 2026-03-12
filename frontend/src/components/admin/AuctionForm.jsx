@@ -20,11 +20,20 @@ import {
   Text,
   HStack,
   Tooltip,
+  Image,
+  Center,
+  Spinner,
   useToast,
 } from "@chakra-ui/react";
+import {
+  AttachmentIcon,
+  CloseIcon,
+  CheckIcon,
+  StarIcon,
+} from "@chakra-ui/icons";
 import { useForm, Controller } from "react-hook-form";
 import { format, addDays } from "date-fns";
-import { auctionsApi } from "@/lib/api";
+import { auctionsApi, uploadApi } from "@/lib/api";
 
 const CATEGORIES = [
   "Electronics",
@@ -50,6 +59,8 @@ export default function AuctionForm({
 }) {
   const toast = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [imagePreview, setImagePreview] = useState(defaultValues?.image || "");
+  const [isUploading, setIsUploading] = useState(false);
   const {
     register,
     handleSubmit,
@@ -82,8 +93,42 @@ export default function AuctionForm({
           ? toDatetimeLocal(defaultValues.endTime)
           : "",
       });
+      setImagePreview(defaultValues.image || "");
     }
   }, [defaultValues]);
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Show local preview immediately
+    const objectUrl = URL.createObjectURL(file);
+    setImagePreview(objectUrl);
+    // Upload to server
+    setIsUploading(true);
+    try {
+      const { data } = await uploadApi.uploadImage(file);
+      setValue("image", data.url, { shouldValidate: true });
+      toast({ title: "Image uploaded", status: "success", duration: 2000 });
+    } catch (err) {
+      setImagePreview("");
+      setValue("image", "");
+      toast({
+        title: "Upload failed",
+        description:
+          err.response?.data?.message || "Max 5 MB. JPEG/PNG/WebP only.",
+        status: "error",
+        duration: 4000,
+      });
+    } finally {
+      setIsUploading(false);
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview("");
+    setValue("image", "");
+  };
 
   const handleGenerateDescription = async () => {
     const title = watch("title");
@@ -107,8 +152,8 @@ export default function AuctionForm({
       toast({
         title:
           data.source === "ai"
-            ? "✨ AI description generated!"
-            : "✏️ Description generated",
+            ? "AI description generated"
+            : "Description generated",
         status: "success",
         duration: 3000,
       });
@@ -167,9 +212,10 @@ export default function AuctionForm({
                 variant='ghost'
                 onClick={handleGenerateDescription}
                 isLoading={isGenerating}
-                loadingText='✨ Generating...'
+                loadingText='Generating...'
+                leftIcon={<StarIcon />}
               >
-                ✨ AI Generate
+                AI Generate
               </Button>
             </Tooltip>
           </HStack>
@@ -203,13 +249,85 @@ export default function AuctionForm({
           </FormControl>
 
           <FormControl>
-            <FormLabel fontSize='sm'>Image URL</FormLabel>
-            <Input
-              placeholder='https://...'
-              type='url'
-              {...inputProps}
-              {...register("image")}
+            <FormLabel fontSize='sm'>Image</FormLabel>
+            {/* Hidden real file input */}
+            <input
+              type='file'
+              accept='image/jpeg,image/png,image/webp,image/gif'
+              style={{ display: "none" }}
+              id='auction-image-input'
+              onChange={handleImageChange}
             />
+            {imagePreview ? (
+              <Box position='relative' w='full'>
+                <Image
+                  src={imagePreview}
+                  alt='Preview'
+                  h='140px'
+                  w='full'
+                  objectFit='cover'
+                  borderRadius='lg'
+                  border='1px solid'
+                  borderColor='whiteAlpha.200'
+                />
+                {isUploading && (
+                  <Center
+                    position='absolute'
+                    inset={0}
+                    bg='blackAlpha.600'
+                    borderRadius='lg'
+                  >
+                    <Spinner color='brand.400' />
+                  </Center>
+                )}
+                {!isUploading && (
+                  <HStack position='absolute' bottom={2} right={2} spacing={2}>
+                    <Button
+                      as='label'
+                      htmlFor='auction-image-input'
+                      size='xs'
+                      colorScheme='brand'
+                      cursor='pointer'
+                      leftIcon={<AttachmentIcon />}
+                    >
+                      Change
+                    </Button>
+                    <Button
+                      size='xs'
+                      colorScheme='red'
+                      onClick={handleRemoveImage}
+                      leftIcon={<CloseIcon boxSize={2} />}
+                    >
+                      Remove
+                    </Button>
+                  </HStack>
+                )}
+              </Box>
+            ) : (
+              <Box
+                as='label'
+                htmlFor='auction-image-input'
+                display='flex'
+                flexDirection='column'
+                alignItems='center'
+                justifyContent='center'
+                h='120px'
+                border='2px dashed'
+                borderColor='whiteAlpha.300'
+                borderRadius='lg'
+                cursor='pointer'
+                _hover={{ borderColor: "brand.400", bg: "whiteAlpha.50" }}
+                transition='all 0.2s'
+              >
+                <AttachmentIcon boxSize={6} color='whiteAlpha.400' mb={2} />
+                <Text fontSize='sm' color='whiteAlpha.500'>
+                  Click to upload image
+                </Text>
+                <Text fontSize='xs' color='whiteAlpha.300' mt={1}>
+                  JPEG, PNG, WebP — max 5 MB
+                </Text>
+              </Box>
+            )}
           </FormControl>
         </SimpleGrid>
 

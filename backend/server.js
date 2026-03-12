@@ -17,6 +17,7 @@ const auctionRoutes = require("./src/routes/auctions");
 const bidRoutes = require("./src/routes/bids");
 const adminRoutes = require("./src/routes/admin");
 const userRoutes = require("./src/routes/users");
+const uploadRoutes = require("./src/routes/upload");
 const { initSocket } = require("./src/socket/socketHandler");
 const { startAuctionScheduler } = require("./src/utils/auctionScheduler");
 
@@ -88,12 +89,24 @@ app.use((req, _res, next) => {
   next();
 });
 
+// ─── Static: uploaded images ─────────────────────────────────────────────────
+const path = require("path");
+// helmet sets Cross-Origin-Resource-Policy: same-origin globally; override for
+// the uploads folder so browsers on other origins (e.g. the Next.js frontend)
+// can freely load the images via <img> tags.
+app.use("/uploads", (_req, res, next) => {
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+});
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/auctions", auctionRoutes);
 app.use("/api/bids", bidRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/upload", uploadRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({

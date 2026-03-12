@@ -32,7 +32,7 @@ import { RepeatClockIcon } from "@chakra-ui/icons";
 import { bidsApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
-export default function AutoBidModal({ isOpen, onClose, auction }) {
+export default function AutoBidModal({ isOpen, onClose, auction, onSuccess }) {
   const { user } = useAuth();
   const toast = useToast();
   const [maxAmount, setMaxAmount] = useState(0);
@@ -78,6 +78,7 @@ export default function AutoBidModal({ isOpen, onClose, auction }) {
         duration: 4000,
         isClosable: true,
       });
+      onSuccess?.(true);
       onClose();
     } catch (err) {
       toast({
@@ -101,6 +102,7 @@ export default function AutoBidModal({ isOpen, onClose, auction }) {
         status: "info",
         duration: 3000,
       });
+      onSuccess?.(false);
       onClose();
     } catch (err) {
       toast({ title: "Failed to cancel", status: "error", duration: 3000 });

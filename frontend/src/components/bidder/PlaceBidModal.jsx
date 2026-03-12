@@ -29,6 +29,13 @@ import {
   Tooltip,
   useToast,
 } from "@chakra-ui/react";
+import {
+  CheckCircleIcon,
+  WarningTwoIcon,
+  TimeIcon,
+  ArrowUpIcon,
+  WarningIcon,
+} from "@chakra-ui/icons";
 import { bidsApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
@@ -75,7 +82,7 @@ export default function PlaceBidModal({ isOpen, onClose, auction, onSuccess }) {
         updateUser({ credits: data.remainingCredits });
       }
       toast({
-        title: "🎉 Bid placed!",
+        title: "Bid placed!",
         description: `You bid ${amount} credits on "${auction.title}"`,
         status: "success",
         duration: 4000,
@@ -164,13 +171,27 @@ export default function PlaceBidModal({ isOpen, onClose, auction, onSuccess }) {
                     Smart Suggestions
                   </Text>
                   {suggestions.urgencyLevel === "high" && (
-                    <Badge colorScheme='red' fontSize='2xs'>
-                      🔥 High Competition
+                    <Badge
+                      colorScheme='red'
+                      fontSize='2xs'
+                      display='inline-flex'
+                      alignItems='center'
+                      gap={1}
+                    >
+                      <WarningTwoIcon boxSize={2.5} />
+                      High Competition
                     </Badge>
                   )}
                   {suggestions.urgencyLevel === "medium" && (
-                    <Badge colorScheme='yellow' fontSize='2xs'>
-                      ⚡ Heating Up
+                    <Badge
+                      colorScheme='yellow'
+                      fontSize='2xs'
+                      display='inline-flex'
+                      alignItems='center'
+                      gap={1}
+                    >
+                      <TimeIcon boxSize={2.5} />
+                      Heating Up
                     </Badge>
                   )}
                 </HStack>
@@ -184,30 +205,33 @@ export default function PlaceBidModal({ isOpen, onClose, auction, onSuccess }) {
                     <Button
                       variant='outline'
                       colorScheme='green'
+                      leftIcon={<CheckCircleIcon />}
                       onClick={() => setAmount(suggestions.safe)}
                       isDisabled={loading}
                     >
-                      🟢 Safe — {suggestions.safe} cr
+                      Safe — {suggestions.safe} cr
                     </Button>
                   </Tooltip>
                   <Tooltip label='Based on current bid pace' hasArrow>
                     <Button
                       variant='outline'
                       colorScheme='blue'
+                      leftIcon={<ArrowUpIcon />}
                       onClick={() => setAmount(suggestions.competitive)}
                       isDisabled={loading}
                     >
-                      🔵 Compete — {suggestions.competitive} cr
+                      Compete — {suggestions.competitive} cr
                     </Button>
                   </Tooltip>
                   <Tooltip label='Strong move to deter competitors' hasArrow>
                     <Button
                       variant='outline'
                       colorScheme='red'
+                      leftIcon={<WarningIcon />}
                       onClick={() => setAmount(suggestions.aggressive)}
                       isDisabled={loading}
                     >
-                      🔴 Aggressive — {suggestions.aggressive} cr
+                      Aggressive — {suggestions.aggressive} cr
                     </Button>
                   </Tooltip>
                 </ButtonGroup>

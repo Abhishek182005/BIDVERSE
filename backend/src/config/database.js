@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
 
 const connectDB = async () => {
   try {
@@ -25,11 +24,11 @@ const seedAdmin = async () => {
     const User = require("../models/User");
     const existing = await User.findOne({ email: "admin@bidverse.com" });
     if (!existing) {
-      const hashed = await bcrypt.hash("Admin@123", 12);
+      // Pass plain password — the pre-save hook will hash it exactly once
       await User.create({
         name: "BidVerse Admin",
         email: "admin@bidverse.com",
-        password: hashed,
+        password: "Admin@123",
         role: "admin",
       });
       console.log(

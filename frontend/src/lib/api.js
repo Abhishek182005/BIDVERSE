@@ -26,7 +26,16 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
+    const isAuthCheck = error.config?.url?.includes("/auth/me");
+    const alreadyOnLogin =
+      typeof window !== "undefined" &&
+      window.location.pathname.startsWith("/auth");
+    if (
+      error.response?.status === 401 &&
+      typeof window !== "undefined" &&
+      !isAuthCheck &&
+      !alreadyOnLogin
+    ) {
       // Token expired — clear and redirect to login
       localStorage.removeItem("bv_token");
       localStorage.removeItem("bv_user");
@@ -75,6 +84,17 @@ export const adminApi = {
   toggleUserStatus: (userId) => api.put(`/admin/users/${userId}/toggle-status`),
   getReports: (params) => api.get("/admin/reports", { params }),
   getAuctionReport: (auctionId) => api.get(`/admin/reports/${auctionId}`),
+};
+
+// ─── Upload ──────────────────────────────────────────────────────────────────
+export const uploadApi = {
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    return api.post("/upload/image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };
 
 // ─── Users ───────────────────────────────────────────────────────────────────

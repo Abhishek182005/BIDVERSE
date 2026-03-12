@@ -80,9 +80,8 @@ const login = async (req, res, next) => {
         .json({ success: false, message: "Your account has been deactivated" });
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save({ validateBeforeSave: false });
+    // Update last login (use updateOne to bypass pre-save hook and avoid re-hashing password)
+    await User.updateOne({ _id: user._id }, { lastLogin: new Date() });
 
     const token = signToken(user._id);
 

@@ -4,7 +4,7 @@ const User = require("../models/User");
 const Notification = require("../models/Notification");
 const AutoBid = require("../models/AutoBid");
 
-// ─── Internal: execute a bid without HTTP context ────────────────────────────
+// --- Internal: execute a bid without HTTP context ---
 // Used by both the HTTP placeBid handler and the auto-bid system.
 async function _executeBidInternal(
   auctionId,
@@ -12,6 +12,7 @@ async function _executeBidInternal(
   bidAmount,
   io,
   isAutoBid = false,
+  suppressChain = false,
 ) {
   const bidderIdStr = bidderId.toString();
 
@@ -118,8 +119,9 @@ async function _executeBidInternal(
   io?.to(`auction:${auctionId}`).emit("new_bid", bidEvent);
   io?.to("admin_room").emit("live_bid_update", bidEvent);
 
-  // Trigger auto-bid for the user who was just outbid (non-blocking)
-  if (previousBidderId && previousBidderId !== bidderIdStr) {
+  // Trigger auto-bid for the user who was just outbid (chain-safe)
+  // suppressChain is set when we're already inside _triggerAutoBid's loop.
+  if (!suppressChain && previousBidderId && previousBidderId !== bidderIdStr) {
     setImmediate(() =>
       _triggerAutoBid(
         auctionId.toString(),
@@ -134,7 +136,14 @@ async function _executeBidInternal(
   return newBid;
 }
 
-// ─── Internal: trigger auto-bid response for a freshly outbid user ───────────
+// Per-auction lock — prevents two concurrent auto-bid chains on the same auction
+const _autoBidLocks = new Set();
+
+// --- Internal: trigger auto-bid response for a freshly outbid user ---
+// Resolves the full back-and-forth chain in one loop (max 20 rounds) so that
+// two players with auto-bids don't spin forever.
+// A per-auction lock stops concurrent chains; a 300ms delay between rounds
+// prevents CPU/DB storms when N users all have auto-bids active.
 async function _triggerAutoBid(
   auctionId,
   bidderId,
@@ -142,41 +151,107 @@ async function _triggerAutoBid(
   bidIncrement,
   io,
 ) {
+  // If a chain is already running for this auction, skip — it will handle it
+  if (_autoBidLocks.has(auctionId)) return;
+  _autoBidLocks.add(auctionId);
+
+  const MAX_ROUNDS = 20;
+  let round = 0;
+  let nextBidderId = bidderId;
+  let latestBid = currentBid;
+
   try {
-    const autoBid = await AutoBid.findOne({
-      auction: auctionId,
-      bidder: bidderId,
-      isActive: true,
-    });
-    if (!autoBid) return;
+    while (round < MAX_ROUNDS) {
+      round++;
+      try {
+        const autoBid = await AutoBid.findOne({
+          auction: auctionId,
+          bidder: nextBidderId,
+          isActive: true,
+        });
+        if (!autoBid) break; // this user has no auto-bid — chain ends
 
-    const autoAmount = currentBid + bidIncrement;
+        const autoAmount = latestBid + bidIncrement;
 
-    if (autoAmount > autoBid.maxAmount) {
-      // Budget exhausted — deactivate and notify
-      autoBid.isActive = false;
-      await autoBid.save();
+        if (autoAmount > autoBid.maxAmount) {
+          // Budget exhausted — deactivate and notify, then stop
+          autoBid.isActive = false;
+          await autoBid.save();
 
-      const auction = await Auction.findById(auctionId).select("title");
-      await Notification.create({
-        recipient: bidderId,
-        type: "outbid",
-        title: "Auto-bid limit reached",
-        message: `Your auto-bid for "${auction?.title}" has reached its limit of ${autoBid.maxAmount} credits and has been deactivated.`,
-        auction: auctionId,
-      });
-      io?.to(`user:${bidderId}`).emit("notification", {
-        type: "outbid",
-        title: "Auto-bid limit reached",
-        message: `Auto-bid for "${auction?.title}" exhausted (max: ${autoBid.maxAmount} cr)`,
-        auctionId,
-      });
-      return;
+          const auction = await Auction.findById(auctionId).select("title");
+          await Notification.create({
+            recipient: nextBidderId,
+            type: "outbid",
+            title: "Auto-bid limit reached",
+            message: `Your auto-bid for "${auction?.title}" has reached its limit of ${autoBid.maxAmount} credits and has been deactivated.`,
+            auction: auctionId,
+          });
+          io?.to(`user:${nextBidderId}`).emit("notification", {
+            type: "outbid",
+            title: "Auto-bid limit reached",
+            message: `Auto-bid for "${auction?.title}" exhausted (max: ${autoBid.maxAmount} cr)`,
+            auctionId,
+          });
+          break;
+        }
+
+        // Place the auto-bid. Pass a flag so _executeBidInternal does NOT
+        // queue another _triggerAutoBid (we manage the loop right here).
+        const newBid = await _executeBidInternal(
+          auctionId,
+          nextBidderId,
+          autoAmount,
+          io,
+          true,
+          true, // suppressChain
+        );
+        if (!newBid) break; // bid failed (e.g. auction ended mid-chain)
+
+        // The person who was just outbid is whoever held the bid before this round.
+        // _executeBidInternal returns the new bid; we need the previous leader.
+        // We stored previousBidderId inside _executeBidInternal but can't access it here.
+        // Instead, re-query the auction to find the new state and determine if the
+        // previously-leading user also has an auto-bid.
+        const updatedAuction = await Auction.findById(auctionId).select(
+          "currentBidder currentBid status endTime",
+        );
+        if (!updatedAuction || updatedAuction.status !== "active") break;
+
+        // The next candidate to respond is the user who JUST got outbid, which is
+        // the one who placed the bid that `nextBidderId` just outbid — i.e., the
+        // previous leader before this round. We know they had `latestBid`.
+        // Find their bid record to get their ID.
+        const justOutbidBid = await Bid.findOne({
+          auction: auctionId,
+          status: "outbid",
+          amount: latestBid,
+        }).sort("-createdAt");
+
+        if (!justOutbidBid) break;
+        const justOutbidUserId = justOutbidBid.bidder.toString();
+        if (justOutbidUserId === nextBidderId.toString()) break; // same user, stop
+
+        latestBid = autoAmount;
+        nextBidderId = justOutbidUserId;
+        bidIncrement = updatedAuction.bidIncrement || bidIncrement;
+
+        // 300ms cooldown — prevents DB/CPU storms with many concurrent auto-bidders
+        await new Promise((r) => setTimeout(r, 300));
+      } catch (err) {
+        console.error("Auto-bid chain error (round %d):", round, err.message);
+        break;
+      }
     }
+  } finally {
+    _autoBidLocks.delete(auctionId);
+  }
 
-    await _executeBidInternal(auctionId, bidderId, autoAmount, io, true);
-  } catch (err) {
-    console.error("Auto-bid trigger error:", err.message);
+  if (round >= MAX_ROUNDS) {
+    console.warn(
+      "Auto-bid chain hit MAX_ROUNDS (%d) for auction %s — stopping.",
+      MAX_ROUNDS,
+      auctionId,
+    );
   }
 }
 
@@ -206,12 +281,10 @@ const placeBid = async (req, res, next) => {
 
     const now = new Date();
     if (auction.status !== "active") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "This auction is not currently active",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "This auction is not currently active",
+      });
     }
     if (auction.endTime <= now) {
       return res

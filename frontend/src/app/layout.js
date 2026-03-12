@@ -9,6 +9,10 @@ export const metadata = {
   description:
     "Professional real-time auction platform. Bid, win, and manage auctions with ease.",
   keywords: "auction, bidding, live auction, online auction, credits",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }) {

@@ -49,7 +49,7 @@ export default function UserCreditsModal({ isOpen, onClose, user, onSuccess }) {
     try {
       await adminApi.assignCredits(user._id, {
         operation,
-        amount: Number(amount),
+        credits: Number(amount),
       });
       toast({
         title: "Credits updated",
