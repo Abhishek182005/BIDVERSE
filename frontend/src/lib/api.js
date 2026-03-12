@@ -51,6 +51,8 @@ export const auctionsApi = {
   update: (id, data) => api.put(`/auctions/${id}`, data),
   delete: (id) => api.delete(`/auctions/${id}`),
   close: (id) => api.post(`/auctions/${id}/close`),
+  generateDescription: (data) =>
+    api.post("/auctions/generate-description", data),
 };
 
 // ─── Bids ────────────────────────────────────────────────────────────────────
@@ -58,6 +60,10 @@ export const bidsApi = {
   place: (data) => api.post("/bids", data),
   getAuctionBids: (auctionId) => api.get(`/bids/auction/${auctionId}`),
   getMyBids: (params) => api.get("/bids/my", { params }),
+  getSuggestions: (auctionId) => api.get(`/bids/suggestions/${auctionId}`),
+  setAutoBid: (data) => api.post("/bids/autobid", data),
+  getAutoBid: (auctionId) => api.get(`/bids/autobid/${auctionId}`),
+  cancelAutoBid: (auctionId) => api.delete(`/bids/autobid/${auctionId}`),
 };
 
 // ─── Admin ───────────────────────────────────────────────────────────────────

@@ -322,6 +322,80 @@ const finalizeAuction = async (auction, io) => {
   await auction.save();
 };
 
+// @desc  AI-powered auction description generator
+// @route POST /api/auctions/generate-description
+// @access Admin
+const generateDescription = async (req, res, next) => {
+  try {
+    const { title, category } = req.body;
+    if (!title || !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and category are required",
+      });
+    }
+
+    // Try Groq API (free tier) if key is configured
+    if (process.env.GROQ_API_KEY) {
+      try {
+        const response = await fetch(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "llama3-8b-8192",
+              messages: [
+                {
+                  role: "user",
+                  content: `Write a compelling 2-3 sentence auction listing description for: "${title}" in the ${category} category. Mention likely condition, key features, and why a bidder should want it. Keep it under 180 words. No bullet points.`,
+                },
+              ],
+              max_tokens: 220,
+              temperature: 0.7,
+            }),
+          },
+        );
+
+        if (response.ok) {
+          const aiData = await response.json();
+          const description = aiData.choices?.[0]?.message?.content?.trim();
+          if (description) {
+            return res.json({ success: true, description, source: "ai" });
+          }
+        }
+      } catch (_) {
+        // Fall through to template
+      }
+    }
+
+    // Template-based fallback (no API key required)
+    const description = _templateDescription(title, category);
+    res.json({ success: true, description, source: "template" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+function _templateDescription(title, category) {
+  const templates = {
+    Electronics: `This ${title} is a premium electronic item offered in excellent working condition. All original components are intact and the device has been thoroughly tested for full functionality. A rare opportunity to own high-quality technology at a competitive auction price — perfect for enthusiasts and collectors alike.`,
+    Art: `${title} is a captivating original artwork that showcases exceptional craftsmanship and artistic vision. This piece carries both aesthetic and collectible value, making it a worthy addition to any curated art collection. Bidders with a discerning eye for quality will not want to miss this unique opportunity.`,
+    Jewelry: `This stunning ${title} is crafted with attention to detail, featuring fine materials and exquisite design. The piece is in excellent condition and comes with its original presentation. A timeless acquisition that combines elegance with lasting value.`,
+    Collectibles: `${title} is a highly sought-after collectible in great preserved condition, ideal for serious collectors. Its rarity and historical significance make it a standout piece for any collection. This is a once-in-a-while opportunity that passionate collectors should not overlook.`,
+    Fashion: `This ${title} is a premium fashion item in excellent condition with all original labels. Crafted from high-quality materials, it offers both style and durability for discerning buyers. An ideal addition for fashion-forward individuals seeking distinctive pieces.`,
+    Vehicles: `The ${title} is presented in well-maintained condition, offering reliability and performance. Service history confirms regular upkeep, and the vehicle is ready for its new owner. A compelling opportunity for buyers seeking quality and value in the automotive market.`,
+    "Real Estate": `${title} represents a compelling real estate opportunity in a prime location. The property offers excellent potential for personal use or as an investment asset. All relevant documentation is in order — serious bidders are encouraged to review all details before the auction closes.`,
+  };
+  return (
+    templates[category] ||
+    `${title} is a unique item offered in good condition, representing excellent value for interested bidders. This is a rare chance to acquire a quality item through competitive bidding. Review all details carefully and place your bid before the auction closes.`
+  );
+}
+
 module.exports = {
   getAuctions,
   getAuction,
@@ -330,6 +404,7 @@ module.exports = {
   deleteAuction,
   closeAuction,
   finalizeAuction,
+  generateDescription,
 };
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────

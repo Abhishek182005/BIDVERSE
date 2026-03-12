@@ -29,6 +29,11 @@ const bidSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Placed automatically by the auto-bid system
+    isAutoBid: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

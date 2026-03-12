@@ -7,6 +7,7 @@ const {
   updateAuction,
   deleteAuction,
   closeAuction,
+  generateDescription,
 } = require("../controllers/auctionController");
 const { protect, authorize } = require("../middleware/auth");
 
@@ -44,6 +45,13 @@ const auctionValidation = [
 ];
 
 router.get("/", getAuctions);
+// Must come before /:id to avoid "generate-description" being treated as an ID
+router.post(
+  "/generate-description",
+  protect,
+  authorize("admin"),
+  generateDescription,
+);
 router.get("/:id", getAuction);
 
 router.post("/", protect, authorize("admin"), auctionValidation, createAuction);

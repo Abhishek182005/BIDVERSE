@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -19,9 +19,12 @@ import {
   SimpleGrid,
   Text,
   HStack,
+  Tooltip,
+  useToast,
 } from "@chakra-ui/react";
 import { useForm, Controller } from "react-hook-form";
 import { format, addDays } from "date-fns";
+import { auctionsApi } from "@/lib/api";
 
 const CATEGORIES = [
   "Electronics",
@@ -45,11 +48,15 @@ export default function AuctionForm({
   isLoading,
   submitLabel = "Create Auction",
 }) {
+  const toast = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
   const {
     register,
     handleSubmit,
     control,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: defaultValues || {
@@ -77,6 +84,45 @@ export default function AuctionForm({
       });
     }
   }, [defaultValues]);
+
+  const handleGenerateDescription = async () => {
+    const title = watch("title");
+    const category = watch("category");
+    if (!title?.trim()) {
+      toast({
+        title: "Enter a title first",
+        description: "The AI uses your title to write the description.",
+        status: "warning",
+        duration: 3000,
+      });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const { data } = await auctionsApi.generateDescription({
+        title,
+        category,
+      });
+      setValue("description", data.description, { shouldValidate: true });
+      toast({
+        title:
+          data.source === "ai"
+            ? "✨ AI description generated!"
+            : "✏️ Description generated",
+        status: "success",
+        duration: 3000,
+      });
+    } catch (err) {
+      toast({
+        title: "Generation failed",
+        description: err.response?.data?.message || "Please try again",
+        status: "error",
+        duration: 3000,
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const inputProps = {
     bg: "dark.600",
@@ -107,7 +153,26 @@ export default function AuctionForm({
         </FormControl>
 
         <FormControl isInvalid={!!errors.description}>
-          <FormLabel fontSize='sm'>Description *</FormLabel>
+          <HStack justify='space-between' mb={1}>
+            <FormLabel fontSize='sm' mb={0}>
+              Description *
+            </FormLabel>
+            <Tooltip
+              label='Generate a description using AI based on the title and category'
+              hasArrow
+            >
+              <Button
+                size='xs'
+                colorScheme='purple'
+                variant='ghost'
+                onClick={handleGenerateDescription}
+                isLoading={isGenerating}
+                loadingText='✨ Generating...'
+              >
+                ✨ AI Generate
+              </Button>
+            </Tooltip>
+          </HStack>
           <Textarea
             placeholder='Describe the item condition, specifications, and any notable details...'
             rows={4}

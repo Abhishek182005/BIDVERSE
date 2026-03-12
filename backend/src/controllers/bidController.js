@@ -2,6 +2,183 @@ const Auction = require("../models/Auction");
 const Bid = require("../models/Bid");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
+const AutoBid = require("../models/AutoBid");
+
+// ─── Internal: execute a bid without HTTP context ────────────────────────────
+// Used by both the HTTP placeBid handler and the auto-bid system.
+async function _executeBidInternal(
+  auctionId,
+  bidderId,
+  bidAmount,
+  io,
+  isAutoBid = false,
+) {
+  const bidderIdStr = bidderId.toString();
+
+  const auction = await Auction.findById(auctionId).populate(
+    "currentBidder",
+    "name",
+  );
+  if (!auction) return null;
+
+  const now = new Date();
+  if (
+    auction.status !== "active" ||
+    auction.endTime <= now ||
+    auction.startTime > now
+  )
+    return null;
+
+  const minRequired = Math.max(
+    auction.minBid,
+    (auction.currentBid || 0) + (auction.bidIncrement || 1),
+  );
+  if (bidAmount < minRequired) return null;
+
+  const bidder = await User.findById(bidderId);
+  if (!bidder || bidder.credits < bidAmount) return null;
+
+  // Prevent auto-bid from firing when this user is already the leader
+  if (isAutoBid && auction.currentBidder?._id?.toString() === bidderIdStr)
+    return null;
+
+  const previousBid = await Bid.findOne({
+    auction: auctionId,
+    status: "active",
+  }).sort("-amount");
+  let previousBidderId = null;
+
+  if (previousBid) {
+    previousBidderId = previousBid.bidder.toString();
+
+    if (previousBidderId === bidderIdStr) {
+      // Self-raise: return own previous bid amount first
+      await User.findByIdAndUpdate(bidderId, {
+        $inc: { credits: previousBid.amount },
+      });
+      previousBid.creditsReturned = true;
+    } else {
+      await User.findByIdAndUpdate(previousBid.bidder, {
+        $inc: { credits: previousBid.amount },
+      });
+      previousBid.creditsReturned = true;
+
+      const prefix = isAutoBid ? "An auto-bid" : "Someone";
+      await Notification.create({
+        recipient: previousBid.bidder,
+        type: "outbid",
+        title: "You have been outbid!",
+        message: `${prefix} outbid you on "${auction.title}". New leading bid: ${bidAmount} credits.`,
+        auction: auctionId,
+        metadata: { newBid: bidAmount, yourBid: previousBid.amount },
+      });
+
+      io?.to(`user:${previousBid.bidder}`).emit("notification", {
+        type: "outbid",
+        title: "You have been outbid!",
+        message: `New leading bid on "${auction.title}": ${bidAmount} credits`,
+        auctionId,
+      });
+    }
+    previousBid.status = "outbid";
+    await previousBid.save();
+  }
+
+  bidder.credits -= bidAmount;
+  await bidder.save({ validateBeforeSave: false });
+
+  const newBid = await Bid.create({
+    auction: auctionId,
+    bidder: bidderId,
+    amount: bidAmount,
+    status: "active",
+    isAutoBid,
+  });
+
+  auction.currentBid = bidAmount;
+  auction.currentBidder = bidderId;
+  auction.totalBids += 1;
+  await auction.save();
+
+  await newBid.populate("bidder", "name avatar");
+
+  const bidEvent = {
+    bid: newBid,
+    auction: {
+      _id: auction._id,
+      currentBid: bidAmount,
+      currentBidder: {
+        _id: bidderId,
+        name: bidder.name,
+        avatar: bidder.avatar,
+      },
+      totalBids: auction.totalBids,
+    },
+  };
+  io?.to(`auction:${auctionId}`).emit("new_bid", bidEvent);
+  io?.to("admin_room").emit("live_bid_update", bidEvent);
+
+  // Trigger auto-bid for the user who was just outbid (non-blocking)
+  if (previousBidderId && previousBidderId !== bidderIdStr) {
+    setImmediate(() =>
+      _triggerAutoBid(
+        auctionId.toString(),
+        previousBidderId,
+        bidAmount,
+        auction.bidIncrement || 1,
+        io,
+      ),
+    );
+  }
+
+  return newBid;
+}
+
+// ─── Internal: trigger auto-bid response for a freshly outbid user ───────────
+async function _triggerAutoBid(
+  auctionId,
+  bidderId,
+  currentBid,
+  bidIncrement,
+  io,
+) {
+  try {
+    const autoBid = await AutoBid.findOne({
+      auction: auctionId,
+      bidder: bidderId,
+      isActive: true,
+    });
+    if (!autoBid) return;
+
+    const autoAmount = currentBid + bidIncrement;
+
+    if (autoAmount > autoBid.maxAmount) {
+      // Budget exhausted — deactivate and notify
+      autoBid.isActive = false;
+      await autoBid.save();
+
+      const auction = await Auction.findById(auctionId).select("title");
+      await Notification.create({
+        recipient: bidderId,
+        type: "outbid",
+        title: "Auto-bid limit reached",
+        message: `Your auto-bid for "${auction?.title}" has reached its limit of ${autoBid.maxAmount} credits and has been deactivated.`,
+        auction: auctionId,
+      });
+      io?.to(`user:${bidderId}`).emit("notification", {
+        type: "outbid",
+        title: "Auto-bid limit reached",
+        message: `Auto-bid for "${auction?.title}" exhausted (max: ${autoBid.maxAmount} cr)`,
+        auctionId,
+      });
+      return;
+    }
+
+    await _executeBidInternal(auctionId, bidderId, autoAmount, io, true);
+  } catch (err) {
+    console.error("Auto-bid trigger error:", err.message);
+  }
+}
 
 // @desc  Place a bid
 // @route POST /api/bids
@@ -17,7 +194,6 @@ const placeBid = async (req, res, next) => {
         .json({ success: false, message: "Invalid auction or bid amount" });
     }
 
-    // 1. Fetch auction
     const auction = await Auction.findById(auctionId).populate(
       "currentBidder",
       "name",
@@ -28,13 +204,14 @@ const placeBid = async (req, res, next) => {
         .json({ success: false, message: "Auction not found" });
     }
 
-    // 2. Validate auction state
     const now = new Date();
     if (auction.status !== "active") {
-      return res.status(400).json({
-        success: false,
-        message: "This auction is not currently active",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "This auction is not currently active",
+        });
     }
     if (auction.endTime <= now) {
       return res
@@ -46,15 +223,12 @@ const placeBid = async (req, res, next) => {
         .status(400)
         .json({ success: false, message: "This auction has not started yet" });
     }
-
-    // 3. Cannot bid on own auction
     if (auction.createdBy.toString() === req.user._id.toString()) {
       return res
         .status(400)
         .json({ success: false, message: "Admin cannot bid on auctions" });
     }
 
-    // 4. Validate bid amount
     const minRequired = Math.max(
       auction.minBid,
       (auction.currentBid || 0) + (auction.bidIncrement || 1),
@@ -66,7 +240,6 @@ const placeBid = async (req, res, next) => {
       });
     }
 
-    // 5. Check bidder's credits
     const bidder = await User.findById(req.user._id);
     if (bidder.credits < bidAmount) {
       return res.status(400).json({
@@ -75,94 +248,177 @@ const placeBid = async (req, res, next) => {
       });
     }
 
-    // 6. Return credits to previous highest bidder (if different person)
-    const previousBid = await Bid.findOne({
-      auction: auctionId,
-      status: "active",
-    }).sort("-amount");
-
-    if (previousBid) {
-      if (previousBid.bidder.toString() === req.user._id.toString()) {
-        // Bidder is raising their own bid — return old amount first
-        await User.findByIdAndUpdate(req.user._id, {
-          $inc: { credits: previousBid.amount },
-        });
-        previousBid.creditsReturned = true;
-      } else {
-        // Different bidder outbid — return credits to previous bidder
-        await User.findByIdAndUpdate(previousBid.bidder, {
-          $inc: { credits: previousBid.amount },
-        });
-        previousBid.creditsReturned = true;
-
-        // Notify outbid bidder
-        const outbidUser = await User.findById(previousBid.bidder).select(
-          "name",
-        );
-        await Notification.create({
-          recipient: previousBid.bidder,
-          type: "outbid",
-          title: "You have been outbid!",
-          message: `Someone outbid you on "${auction.title}". New leading bid: ${bidAmount} credits.`,
-          auction: auctionId,
-          metadata: { newBid: bidAmount, yourBid: previousBid.amount },
-        });
-
-        // Emit outbid notification via socket
-        req.io.to(`user:${previousBid.bidder}`).emit("notification", {
-          type: "outbid",
-          title: "You have been outbid!",
-          message: `New leading bid on "${auction.title}": ${bidAmount} credits`,
-          auctionId,
-        });
-      }
-      previousBid.status = "outbid";
-      await previousBid.save();
+    const newBid = await _executeBidInternal(
+      auctionId,
+      req.user._id,
+      bidAmount,
+      req.io,
+      false,
+    );
+    if (!newBid) {
+      return res.status(400).json({
+        success: false,
+        message: "Could not place bid. Please refresh and try again.",
+      });
     }
 
-    // 7. Deduct credits from new bidder
-    bidder.credits -= bidAmount;
-    await bidder.save({ validateBeforeSave: false });
-
-    // 8. Create bid record
-    const newBid = await Bid.create({
-      auction: auctionId,
-      bidder: req.user._id,
-      amount: bidAmount,
-      status: "active",
-    });
-
-    // 9. Update auction
-    auction.currentBid = bidAmount;
-    auction.currentBidder = req.user._id;
-    auction.totalBids += 1;
-    await auction.save();
-
-    // 10. Populate bid for response
-    await newBid.populate("bidder", "name avatar");
-
-    // 11. Emit real-time events
-    const bidEvent = {
-      bid: newBid,
-      auction: {
-        _id: auction._id,
-        currentBid: bidAmount,
-        currentBidder: {
-          _id: req.user._id,
-          name: bidder.name,
-          avatar: bidder.avatar,
-        },
-        totalBids: auction.totalBids,
-      },
-    };
-    req.io.to(`auction:${auctionId}`).emit("new_bid", bidEvent);
-    req.io.to("admin_room").emit("live_bid_update", bidEvent);
-
+    const updatedBidder = await User.findById(req.user._id).select("credits");
     res.status(201).json({
       success: true,
       message: "Bid placed successfully",
       data: newBid,
-      remainingCredits: bidder.credits,
+      remainingCredits: updatedBidder.credits,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc  Set or update auto-bid max budget for an auction
+// @route POST /api/bids/autobid
+// @access Bidder
+const setAutoBid = async (req, res, next) => {
+  try {
+    const { auctionId, maxAmount } = req.body;
+
+    if (!auctionId || !maxAmount) {
+      return res.status(400).json({
+        success: false,
+        message: "auctionId and maxAmount are required",
+      });
+    }
+
+    const auction = await Auction.findById(auctionId);
+    if (!auction) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Auction not found" });
+    }
+    if (auction.status !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "Auto-bid can only be set on active auctions",
+      });
+    }
+
+    const minNext = Math.max(
+      auction.minBid,
+      (auction.currentBid || 0) + (auction.bidIncrement || 1),
+    );
+    if (Number(maxAmount) < minNext) {
+      return res.status(400).json({
+        success: false,
+        message: `Max amount must be at least ${minNext} credits`,
+      });
+    }
+
+    const autoBid = await AutoBid.findOneAndUpdate(
+      { auction: auctionId, bidder: req.user._id },
+      { maxAmount: Number(maxAmount), isActive: true },
+      { upsert: true, new: true },
+    );
+
+    res.json({
+      success: true,
+      message: "Auto-bid activated successfully",
+      data: autoBid,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc  Cancel auto-bid for an auction
+// @route DELETE /api/bids/autobid/:auctionId
+// @access Bidder
+const cancelAutoBid = async (req, res, next) => {
+  try {
+    await AutoBid.findOneAndUpdate(
+      { auction: req.params.auctionId, bidder: req.user._id },
+      { isActive: false },
+    );
+    res.json({ success: true, message: "Auto-bid cancelled" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc  Get current user's active auto-bid for an auction
+// @route GET /api/bids/autobid/:auctionId
+// @access Bidder
+const getAutoBid = async (req, res, next) => {
+  try {
+    const autoBid = await AutoBid.findOne({
+      auction: req.params.auctionId,
+      bidder: req.user._id,
+      isActive: true,
+    });
+    res.json({ success: true, data: autoBid || null });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc  Get smart bid suggestions for an auction
+// @route GET /api/bids/suggestions/:auctionId
+// @access Public
+const getBidSuggestions = async (req, res, next) => {
+  try {
+    const auction = await Auction.findById(req.params.auctionId).select(
+      "minBid currentBid bidIncrement startTime endTime status",
+    );
+    if (!auction) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Auction not found" });
+    }
+
+    const minNext = Math.max(
+      auction.minBid,
+      (auction.currentBid || 0) + (auction.bidIncrement || 1),
+    );
+
+    // Analyse recent bid increments to estimate competitive pace
+    const recentBids = await Bid.find({ auction: req.params.auctionId })
+      .sort("-createdAt")
+      .limit(10)
+      .select("amount");
+
+    let avgIncrement = auction.bidIncrement || 1;
+    if (recentBids.length >= 2) {
+      const increments = [];
+      for (let i = 0; i < recentBids.length - 1; i++) {
+        const diff = recentBids[i].amount - recentBids[i + 1].amount;
+        if (diff > 0) increments.push(diff);
+      }
+      if (increments.length > 0) {
+        avgIncrement = Math.round(
+          increments.reduce((a, b) => a + b, 0) / increments.length,
+        );
+      }
+    }
+
+    // Time urgency: how far into the auction are we?
+    const now = new Date();
+    const totalDuration =
+      new Date(auction.endTime) - new Date(auction.startTime);
+    const elapsed = now - new Date(auction.startTime);
+    const urgency = Math.min(Math.max(elapsed / totalDuration, 0), 1);
+    const urgencyMultiplier = urgency > 0.8 ? 2.5 : urgency > 0.5 ? 1.5 : 1;
+
+    const competitive = Math.round(minNext + avgIncrement * urgencyMultiplier);
+    const aggressive = Math.round(
+      minNext + avgIncrement * 2.5 * urgencyMultiplier,
+    );
+
+    res.json({
+      success: true,
+      data: {
+        safe: minNext,
+        competitive: Math.max(competitive, minNext + 1),
+        aggressive: Math.max(aggressive, minNext + 2),
+        urgencyLevel: urgency > 0.8 ? "high" : urgency > 0.5 ? "medium" : "low",
+      },
     });
   } catch (err) {
     next(err);
@@ -214,4 +470,12 @@ const getMyBids = async (req, res, next) => {
   }
 };
 
-module.exports = { placeBid, getAuctionBids, getMyBids };
+module.exports = {
+  placeBid,
+  getAuctionBids,
+  getMyBids,
+  setAutoBid,
+  cancelAutoBid,
+  getAutoBid,
+  getBidSuggestions,
+};

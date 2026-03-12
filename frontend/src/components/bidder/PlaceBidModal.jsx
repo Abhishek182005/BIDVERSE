@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Modal,
   ModalOverlay,
@@ -25,6 +25,8 @@ import {
   Alert,
   AlertIcon,
   Badge,
+  ButtonGroup,
+  Tooltip,
   useToast,
 } from "@chakra-ui/react";
 import { bidsApi } from "@/lib/api";
@@ -35,14 +37,26 @@ export default function PlaceBidModal({ isOpen, onClose, auction, onSuccess }) {
   const toast = useToast();
   const [amount, setAmount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState(null);
 
   const minNext =
     (auction?.currentBid || auction?.minBid || 0) +
     (auction?.bidIncrement || 1);
 
-  // Sync default when modal opens
+  // Fetch smart suggestions when modal opens
+  useEffect(() => {
+    if (isOpen && auction?._id) {
+      setAmount(minNext);
+      bidsApi
+        .getSuggestions(auction._id)
+        .then((res) => setSuggestions(res.data.data))
+        .catch(() => setSuggestions(null));
+    }
+  }, [isOpen, auction?._id]);
+
+  // Sync default when number input is focused for the first time
   const handleOpen = () => {
-    setAmount(minNext);
+    if (!amount) setAmount(minNext);
   };
 
   const affordable = (user?.credits || 0) >= amount;
@@ -57,8 +71,8 @@ export default function PlaceBidModal({ isOpen, onClose, auction, onSuccess }) {
         amount: Number(amount),
       });
       // Update local user credits
-      if (data.data?.creditsRemaining !== undefined) {
-        updateUser({ credits: data.data.creditsRemaining });
+      if (data.remainingCredits !== undefined) {
+        updateUser({ credits: data.remainingCredits });
       }
       toast({
         title: "🎉 Bid placed!",
@@ -139,6 +153,66 @@ export default function PlaceBidModal({ isOpen, onClose, auction, onSuccess }) {
                 </Badge>
               </HStack>
             </Box>
+
+            <Divider borderColor='whiteAlpha.100' />
+
+            {/* Smart bid suggestions */}
+            {suggestions && (
+              <Box>
+                <HStack mb={2} justify='space-between'>
+                  <Text fontSize='xs' color='whiteAlpha.500'>
+                    Smart Suggestions
+                  </Text>
+                  {suggestions.urgencyLevel === "high" && (
+                    <Badge colorScheme='red' fontSize='2xs'>
+                      🔥 High Competition
+                    </Badge>
+                  )}
+                  {suggestions.urgencyLevel === "medium" && (
+                    <Badge colorScheme='yellow' fontSize='2xs'>
+                      ⚡ Heating Up
+                    </Badge>
+                  )}
+                </HStack>
+                <ButtonGroup
+                  size='xs'
+                  isAttached={false}
+                  gap={2}
+                  flexWrap='wrap'
+                >
+                  <Tooltip label='Minimum required bid' hasArrow>
+                    <Button
+                      variant='outline'
+                      colorScheme='green'
+                      onClick={() => setAmount(suggestions.safe)}
+                      isDisabled={loading}
+                    >
+                      🟢 Safe — {suggestions.safe} cr
+                    </Button>
+                  </Tooltip>
+                  <Tooltip label='Based on current bid pace' hasArrow>
+                    <Button
+                      variant='outline'
+                      colorScheme='blue'
+                      onClick={() => setAmount(suggestions.competitive)}
+                      isDisabled={loading}
+                    >
+                      🔵 Compete — {suggestions.competitive} cr
+                    </Button>
+                  </Tooltip>
+                  <Tooltip label='Strong move to deter competitors' hasArrow>
+                    <Button
+                      variant='outline'
+                      colorScheme='red'
+                      onClick={() => setAmount(suggestions.aggressive)}
+                      isDisabled={loading}
+                    >
+                      🔴 Aggressive — {suggestions.aggressive} cr
+                    </Button>
+                  </Tooltip>
+                </ButtonGroup>
+              </Box>
+            )}
 
             <Divider borderColor='whiteAlpha.100' />
 

@@ -37,6 +37,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
 import CountdownTimer from "@/components/ui/CountdownTimer";
 import PlaceBidModal from "@/components/bidder/PlaceBidModal";
+import AutoBidModal from "@/components/bidder/AutoBidModal";
 import { formatDistanceToNow, format } from "date-fns";
 
 const MotionBox = motion(Box);
@@ -60,6 +61,11 @@ export default function AuctionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isMyLead, setIsMyLead] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isAutoBidOpen,
+    onOpen: onAutoBidOpen,
+    onClose: onAutoBidClose,
+  } = useDisclosure();
 
   const fetchData = async () => {
     try {
@@ -448,6 +454,22 @@ export default function AuctionDetailPage() {
               </Box>
             )}
 
+            {/* Auto-bid button — shown when auction is active and user is not leading */}
+            {auction.status === "active" &&
+              !isMyLead &&
+              (user?.credits || 0) >= minNext && (
+                <Button
+                  w='full'
+                  size='md'
+                  variant='outline'
+                  colorScheme='purple'
+                  onClick={onAutoBidOpen}
+                  mb={2}
+                >
+                  ⚡ Set Auto-Bid
+                </Button>
+              )}
+
             <HStack
               justify='space-between'
               fontSize='xs'
@@ -470,6 +492,11 @@ export default function AuctionDetailPage() {
         onClose={onClose}
         auction={auction}
         onSuccess={handleBidSuccess}
+      />
+      <AutoBidModal
+        isOpen={isAutoBidOpen}
+        onClose={onAutoBidClose}
+        auction={auction}
       />
     </Container>
   );
