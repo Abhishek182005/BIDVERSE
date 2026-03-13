@@ -531,6 +531,8 @@ export default function AuctionDetailPage() {
               justify='space-between'
               fontSize='xs'
               color='whiteAlpha.400'
+              flexWrap='wrap'
+              gap={2}
             >
               <Text>
                 Start:{" "}
@@ -540,6 +542,61 @@ export default function AuctionDetailPage() {
                 End: {format(new Date(auction.endTime), "MMM d, yyyy HH:mm")}
               </Text>
             </HStack>
+
+            {/* Auction Details Card */}
+            <Box
+              bg='dark.700'
+              border='1px solid'
+              borderColor='whiteAlpha.100'
+              borderRadius='xl'
+              p={4}
+              mt={4}
+            >
+              <Text
+                fontSize='xs'
+                color='whiteAlpha.400'
+                fontWeight={600}
+                textTransform='uppercase'
+                letterSpacing='wider'
+                mb={3}
+              >
+                Auction Details
+              </Text>
+              <SimpleGrid columns={2} spacing={3}>
+                <Box>
+                  <Text fontSize='xs' color='whiteAlpha.500'>
+                    Category
+                  </Text>
+                  <Badge colorScheme='purple' fontSize='xs' mt={1}>
+                    {auction.category}
+                  </Badge>
+                </Box>
+                <Box>
+                  <Text fontSize='xs' color='whiteAlpha.500'>
+                    Total Bids
+                  </Text>
+                  <Text fontSize='sm' fontWeight={700} mt={1}>
+                    {auction.totalBids}
+                  </Text>
+                </Box>
+                <Box>
+                  <Text fontSize='xs' color='whiteAlpha.500'>
+                    Starting Bid
+                  </Text>
+                  <Text fontSize='sm' fontWeight={700} color='brand.300' mt={1}>
+                    {auction.minBid} cr
+                  </Text>
+                </Box>
+                <Box>
+                  <Text fontSize='xs' color='whiteAlpha.500'>
+                    Bid Increment
+                  </Text>
+                  <Text fontSize='sm' fontWeight={700} color='cyber.400' mt={1}>
+                    +{auction.bidIncrement} cr
+                  </Text>
+                </Box>
+              </SimpleGrid>
+            </Box>
           </Box>
         </SimpleGrid>
       </MotionBox>

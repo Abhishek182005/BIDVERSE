@@ -140,54 +140,108 @@ export default function BidHistoryPage() {
             <VStack spacing={0} align='stretch'>
               {bids.map((bid, i) => (
                 <Box key={bid._id}>
-                  <HStack
+                  <Box
                     px={5}
-                    py={4}
+                    py={bid.status === "won" ? 4 : 3}
                     _hover={{ bg: "whiteAlpha.50" }}
                     cursor={bid.auction ? "pointer" : "default"}
                     onClick={() =>
                       bid.auction && router.push(`/auctions/${bid.auction._id}`)
                     }
+                    bg={
+                      bid.status === "won"
+                        ? "rgba(255,215,0,0.04)"
+                        : "transparent"
+                    }
                   >
-                    {/* Status Icon */}
-                    <Box w='28px' flexShrink={0}>
-                      {bid.status === "won" ? (
-                        <StarIcon color='gold.400' boxSize={4} />
-                      ) : bid.status === "outbid" ? (
-                        <CloseIcon color='red.400' boxSize={3.5} />
-                      ) : bid.status === "active" ? (
-                        <TriangleUpIcon color='green.400' boxSize={4} />
-                      ) : (
-                        <RepeatClockIcon color='whiteAlpha.400' boxSize={4} />
-                      )}
-                    </Box>
-
-                    {/* Auction Info */}
-                    <Box flex={1} minW={0}>
-                      <Text fontSize='sm' fontWeight={600} noOfLines={1}>
-                        {bid.auction?.title || "Deleted Auction"}
-                      </Text>
-                      <Text fontSize='xs' color='whiteAlpha.400'>
-                        {formatDistanceToNow(new Date(bid.createdAt), {
-                          addSuffix: true,
-                        })}
-                      </Text>
-                    </Box>
-
-                    {/* Amount + Status */}
-                    <VStack spacing={1} align='end' flexShrink={0}>
-                      <Text fontWeight={700} color='gold.400' fontSize='sm'>
-                        {bid.amount} cr
-                      </Text>
-                      <Badge
-                        colorScheme={STATUS_COLORS[bid.status] || "gray"}
-                        fontSize='2xs'
-                        px={2}
-                      >
-                        {STATUS_LABELS[bid.status] || bid.status}
-                      </Badge>
-                    </VStack>
-                  </HStack>
+                    {bid.status === "won" ? (
+                      /* Won bid — expanded card style */
+                      <VStack align='stretch' spacing={2}>
+                        <HStack justify='space-between'>
+                          <HStack spacing={2}>
+                            <StarIcon
+                              color='gold.400'
+                              boxSize={4}
+                              flexShrink={0}
+                            />
+                            <Badge colorScheme='yellow' fontSize='2xs' px={2}>
+                              🏆 WON
+                            </Badge>
+                          </HStack>
+                          <Text fontSize='xs' color='whiteAlpha.400'>
+                            {formatDistanceToNow(new Date(bid.createdAt), {
+                              addSuffix: true,
+                            })}
+                          </Text>
+                        </HStack>
+                        <Text fontSize='sm' fontWeight={700} noOfLines={1}>
+                          {bid.auction?.title || "Deleted Auction"}
+                        </Text>
+                        <HStack justify='space-between' align='flex-end'>
+                          <VStack spacing={0} align='start'>
+                            <Text fontSize='10px' color='whiteAlpha.400'>
+                              WINNING BID
+                            </Text>
+                            <HStack spacing={1} align='baseline'>
+                              <Text
+                                fontWeight={800}
+                                color='gold.400'
+                                fontSize='xl'
+                              >
+                                {bid.amount}
+                              </Text>
+                              <Text fontSize='xs' color='whiteAlpha.400'>
+                                cr
+                              </Text>
+                            </HStack>
+                          </VStack>
+                          {bid.auction?.category && (
+                            <Badge colorScheme='purple' fontSize='2xs'>
+                              {bid.auction.category}
+                            </Badge>
+                          )}
+                        </HStack>
+                      </VStack>
+                    ) : (
+                      /* Regular bid — compact row */
+                      <HStack>
+                        <Box w='28px' flexShrink={0}>
+                          {bid.status === "outbid" ? (
+                            <CloseIcon color='red.400' boxSize={3.5} />
+                          ) : bid.status === "active" ? (
+                            <TriangleUpIcon color='green.400' boxSize={4} />
+                          ) : (
+                            <RepeatClockIcon
+                              color='whiteAlpha.400'
+                              boxSize={4}
+                            />
+                          )}
+                        </Box>
+                        <Box flex={1} minW={0}>
+                          <Text fontSize='sm' fontWeight={600} noOfLines={1}>
+                            {bid.auction?.title || "Deleted Auction"}
+                          </Text>
+                          <Text fontSize='xs' color='whiteAlpha.400'>
+                            {formatDistanceToNow(new Date(bid.createdAt), {
+                              addSuffix: true,
+                            })}
+                          </Text>
+                        </Box>
+                        <VStack spacing={1} align='end' flexShrink={0}>
+                          <Text fontWeight={700} color='gold.400' fontSize='sm'>
+                            {bid.amount} cr
+                          </Text>
+                          <Badge
+                            colorScheme={STATUS_COLORS[bid.status] || "gray"}
+                            fontSize='2xs'
+                            px={2}
+                          >
+                            {STATUS_LABELS[bid.status] || bid.status}
+                          </Badge>
+                        </VStack>
+                      </HStack>
+                    )}
+                  </Box>
                   {i < bids.length - 1 && (
                     <Divider borderColor='whiteAlpha.50' />
                   )}

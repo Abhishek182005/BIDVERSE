@@ -65,6 +65,7 @@ export default function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
       whileHover={{ y: -4, boxShadow: `0 12px 40px ${c.glow}33` }}
+      h='full'
     >
       <Box
         bg='dark.700'
@@ -75,6 +76,9 @@ export default function StatCard({
         transition='all 0.3s'
         position='relative'
         overflow='hidden'
+        h='full'
+        display='flex'
+        flexDirection='column'
       >
         {/* Subtle top gradient */}
         <Box
@@ -86,24 +90,29 @@ export default function StatCard({
           bg={`linear-gradient(90deg, transparent, ${c.glow}, transparent)`}
         />
 
-        <HStack justify='flex-end' mb={3}>
+        <HStack justify='space-between' mb={3}>
+          <Box /> {/* spacer */}
           <Box bg={c.bg} p={2} borderRadius='lg'>
             {icon}
           </Box>
         </HStack>
 
-        <Stat>
+        <Stat flex={1}>
           <StatLabel color='whiteAlpha.600' fontSize='sm'>
             {label}
           </StatLabel>
           <StatNumber fontSize='2xl' fontWeight={800} color={c.text} mt={1}>
             {value}
           </StatNumber>
-          {helpText && (
-            <StatHelpText color='whiteAlpha.400' fontSize='xs' mt={1}>
-              {helpText}
-            </StatHelpText>
-          )}
+          <StatHelpText
+            color='whiteAlpha.400'
+            fontSize='xs'
+            mt={1}
+            minH='16px'
+            mb={0}
+          >
+            {helpText || ""}
+          </StatHelpText>
         </Stat>
       </Box>
     </MotionBox>

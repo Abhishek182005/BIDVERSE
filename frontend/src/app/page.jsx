@@ -199,6 +199,8 @@ export default function LandingPage() {
               <Button
                 variant='ghost'
                 size='sm'
+                color='whiteAlpha.900'
+                _hover={{ bg: "whiteAlpha.200", color: "white" }}
                 onClick={() => router.push("/auth/login")}
               >
                 Login

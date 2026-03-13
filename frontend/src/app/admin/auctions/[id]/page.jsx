@@ -28,17 +28,25 @@ import {
   Tabs,
   TabList,
   Tab,
+  Avatar,
+  Icon,
   TabPanels,
   TabPanel,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { auctionsApi, bidsApi } from "@/lib/api";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import CountdownTimer from "@/components/ui/CountdownTimer";
 import LiveBidMonitor from "@/components/admin/LiveBidMonitor";
 import DeclareWinnerModal from "@/components/admin/DeclareWinnerModal";
 import AuctionForm from "@/components/admin/AuctionForm";
+import {
+  StarIcon,
+  TriangleUpIcon,
+  CalendarIcon,
+  InfoIcon,
+} from "@chakra-ui/icons";
 
 const MotionBox = motion(Box);
 
@@ -140,6 +148,27 @@ export default function AdminAuctionDetailPage() {
     }
   };
 
+  // Compute unique participants from bid list
+  const uniqueBidders = Object.values(
+    bids.reduce((acc, bid) => {
+      const uid = bid.bidder?._id;
+      if (!uid) return acc;
+      if (!acc[uid]) {
+        acc[uid] = {
+          ...bid.bidder,
+          bidCount: 0,
+          highestBid: 0,
+          lastBid: bid.createdAt,
+        };
+      }
+      acc[uid].bidCount++;
+      if (bid.amount > acc[uid].highestBid) acc[uid].highestBid = bid.amount;
+      if (new Date(bid.createdAt) > new Date(acc[uid].lastBid))
+        acc[uid].lastBid = bid.createdAt;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b.highestBid - a.highestBid);
+
   if (loading) {
     return (
       <Center minH='calc(100vh - 64px)'>
@@ -212,10 +241,10 @@ export default function AdminAuctionDetailPage() {
                 {editing ? "Cancel Edit" : "✏️ Edit"}
               </Button>
             )}
-            {auction.status === "active" && (
+            {auction.status === "active" && !auction.winner && (
               <Button
                 size='sm'
-                colorScheme='gold'
+                colorScheme='yellow'
                 bg='gold.400'
                 color='gray.900'
                 _hover={{ bg: "gold.300" }}
@@ -227,7 +256,67 @@ export default function AdminAuctionDetailPage() {
           </HStack>
         </Flex>
 
-        <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6}>
+        {/* Stats row */}
+        <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} mb={6}>
+          {[
+            {
+              label: "Current Bid",
+              value: `${auction.currentBid || auction.minBid} cr`,
+              color: "gold.400",
+              border: "gold.500",
+              glow: "rgba(255,215,0,0.1)",
+            },
+            {
+              label: "Min Bid",
+              value: `${auction.minBid} cr`,
+              color: "brand.300",
+              border: "brand.500",
+              glow: "rgba(108,99,255,0.1)",
+            },
+            {
+              label: "Bid Increment",
+              value: `${auction.bidIncrement} cr`,
+              color: "cyber.400",
+              border: "cyber.500",
+              glow: "rgba(0,212,255,0.1)",
+            },
+            {
+              label: "Total Bids",
+              value: auction.totalBids,
+              color: "green.400",
+              border: "green.500",
+              glow: "rgba(0,229,160,0.1)",
+            },
+          ].map((s, i) => (
+            <Box
+              key={i}
+              bg='dark.700'
+              border='1px solid'
+              borderColor={s.border}
+              borderRadius='xl'
+              p={4}
+              position='relative'
+              overflow='hidden'
+            >
+              <Box
+                position='absolute'
+                top={0}
+                left={0}
+                right={0}
+                h='2px'
+                bg={`linear-gradient(90deg, transparent, ${s.border}, transparent)`}
+              />
+              <Text fontSize='xs' color='whiteAlpha.500' mb={1}>
+                {s.label}
+              </Text>
+              <Text fontWeight={800} fontSize='2xl' color={s.color}>
+                {s.value}
+              </Text>
+            </Box>
+          ))}
+        </SimpleGrid>
+
+        <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6} alignItems='start'>
           {/* Left: Image + Details */}
           <Box>
             <Box
@@ -271,13 +360,21 @@ export default function AdminAuctionDetailPage() {
                   </StatNumber>
                   {auction.currentBidder && (
                     <StatHelpText color='brand.300'>
-                      by {auction.currentBidder.name}
+                      Leading: {auction.currentBidder.name}
                     </StatHelpText>
                   )}
                 </Stat>
 
                 <Divider borderColor='whiteAlpha.100' />
 
+                <HStack justify='space-between'>
+                  <Text fontSize='xs' color='whiteAlpha.500'>
+                    Category
+                  </Text>
+                  <Badge colorScheme='purple' fontSize='xs'>
+                    {auction.category}
+                  </Badge>
+                </HStack>
                 <HStack justify='space-between'>
                   <Text fontSize='xs' color='whiteAlpha.500'>
                     Min Bid
@@ -302,16 +399,37 @@ export default function AdminAuctionDetailPage() {
                     {auction.totalBids}
                   </Text>
                 </HStack>
+                <HStack justify='space-between'>
+                  <Text fontSize='xs' color='whiteAlpha.500'>
+                    Participants
+                  </Text>
+                  <Text fontSize='sm' fontWeight={600}>
+                    {uniqueBidders.length}
+                  </Text>
+                </HStack>
 
                 <Divider borderColor='whiteAlpha.100' />
 
-                <Text fontSize='xs' color='whiteAlpha.400'>
-                  Start:{" "}
-                  {format(new Date(auction.startTime), "MMM d, yyyy HH:mm")}
-                </Text>
-                <Text fontSize='xs' color='whiteAlpha.400'>
-                  End: {format(new Date(auction.endTime), "MMM d, yyyy HH:mm")}
-                </Text>
+                <VStack spacing={1} align='stretch'>
+                  <HStack>
+                    <CalendarIcon boxSize={3} color='whiteAlpha.400' />
+                    <Text fontSize='xs' color='whiteAlpha.500'>
+                      Start
+                    </Text>
+                  </HStack>
+                  <Text fontSize='xs' color='whiteAlpha.700' pl={4}>
+                    {format(new Date(auction.startTime), "MMM d, yyyy HH:mm")}
+                  </Text>
+                  <HStack mt={1}>
+                    <CalendarIcon boxSize={3} color='whiteAlpha.400' />
+                    <Text fontSize='xs' color='whiteAlpha.500'>
+                      End
+                    </Text>
+                  </HStack>
+                  <Text fontSize='xs' color='whiteAlpha.700' pl={4}>
+                    {format(new Date(auction.endTime), "MMM d, yyyy HH:mm")}
+                  </Text>
+                </VStack>
 
                 {auction.status === "active" && (
                   <Box pt={1}>
@@ -327,20 +445,41 @@ export default function AdminAuctionDetailPage() {
                 )}
 
                 {auction.status === "ended" && auction.winner && (
-                  <Box bg='rgba(255, 215, 0, 0.1)' p={3} borderRadius='lg'>
-                    <Text
-                      fontSize='xs'
-                      color='gold.400'
-                      fontWeight={700}
-                      mb={1}
-                    >
-                      🏆 WINNER
-                    </Text>
-                    <Text fontSize='sm' fontWeight={600}>
+                  <Box
+                    bg='rgba(255, 215, 0, 0.1)'
+                    p={3}
+                    borderRadius='lg'
+                    border='1px solid'
+                    borderColor='gold.500'
+                  >
+                    <HStack mb={2}>
+                      <StarIcon color='gold.400' boxSize={4} />
+                      <Text fontSize='xs' color='gold.400' fontWeight={700}>
+                        WINNER
+                      </Text>
+                    </HStack>
+                    <Text fontSize='sm' fontWeight={700}>
                       {auction.winner.name}
                     </Text>
-                    <Text fontSize='xs' color='whiteAlpha.500'>
-                      Winning bid: {auction.winningBid} cr
+                    <Text fontSize='xs' color='whiteAlpha.500' mt={1}>
+                      Winning bid:{" "}
+                      <strong style={{ color: "#FFD700" }}>
+                        {auction.winningBid} cr
+                      </strong>
+                    </Text>
+                  </Box>
+                )}
+
+                {auction.status === "cancelled" && (
+                  <Box
+                    bg='rgba(255,80,80,0.1)'
+                    p={3}
+                    borderRadius='lg'
+                    border='1px solid'
+                    borderColor='red.500'
+                  >
+                    <Text fontSize='xs' color='red.400' fontWeight={700}>
+                      AUCTION CANCELLED
                     </Text>
                   </Box>
                 )}
@@ -353,6 +492,7 @@ export default function AdminAuctionDetailPage() {
             <Tabs variant='line' colorScheme='brand'>
               <TabList borderColor='whiteAlpha.200'>
                 <Tab fontSize='sm'>Live Bids</Tab>
+                <Tab fontSize='sm'>Participants ({uniqueBidders.length})</Tab>
                 <Tab fontSize='sm'>Description</Tab>
                 {editing && (
                   <Tab fontSize='sm' color='brand.400'>
@@ -361,6 +501,7 @@ export default function AdminAuctionDetailPage() {
                 )}
               </TabList>
               <TabPanels>
+                {/* Tab 1: Live Bids */}
                 <TabPanel px={0}>
                   <Box
                     bg='dark.700'
@@ -372,6 +513,160 @@ export default function AdminAuctionDetailPage() {
                     <LiveBidMonitor auctionId={id} initialBids={bids} />
                   </Box>
                 </TabPanel>
+
+                {/* Tab 2: Participants */}
+                <TabPanel px={0}>
+                  <Box
+                    bg='dark.700'
+                    border='1px solid'
+                    borderColor='whiteAlpha.100'
+                    borderRadius='xl'
+                    overflow='hidden'
+                  >
+                    {uniqueBidders.length === 0 ? (
+                      <Center py={12}>
+                        <VStack>
+                          <Text fontSize='2xl'>👥</Text>
+                          <Text color='whiteAlpha.400' fontSize='sm'>
+                            No participants yet
+                          </Text>
+                        </VStack>
+                      </Center>
+                    ) : (
+                      <VStack spacing={0} align='stretch'>
+                        {/* Header */}
+                        <HStack
+                          px={5}
+                          py={3}
+                          bg='whiteAlpha.50'
+                          borderBottom='1px solid'
+                          borderColor='whiteAlpha.100'
+                        >
+                          <Text
+                            fontSize='xs'
+                            color='whiteAlpha.500'
+                            flex={1}
+                            fontWeight={600}
+                          >
+                            BIDDER
+                          </Text>
+                          <Text
+                            fontSize='xs'
+                            color='whiteAlpha.500'
+                            w='80px'
+                            textAlign='center'
+                            fontWeight={600}
+                          >
+                            BIDS
+                          </Text>
+                          <Text
+                            fontSize='xs'
+                            color='whiteAlpha.500'
+                            w='110px'
+                            textAlign='right'
+                            fontWeight={600}
+                          >
+                            HIGHEST BID
+                          </Text>
+                        </HStack>
+                        {uniqueBidders.map((bidder, i) => (
+                          <Box key={bidder._id}>
+                            <HStack
+                              px={5}
+                              py={3}
+                              _hover={{ bg: "whiteAlpha.50" }}
+                            >
+                              <HStack flex={1} spacing={3} minW={0}>
+                                <Box position='relative'>
+                                  <Avatar
+                                    name={bidder.name}
+                                    size='sm'
+                                    bg='brand.500'
+                                  />
+                                  {i === 0 && (
+                                    <Box
+                                      position='absolute'
+                                      top='-4px'
+                                      right='-4px'
+                                      bg='gold.500'
+                                      borderRadius='full'
+                                      w='14px'
+                                      h='14px'
+                                      display='flex'
+                                      alignItems='center'
+                                      justifyContent='center'
+                                    >
+                                      <Text fontSize='8px'>👑</Text>
+                                    </Box>
+                                  )}
+                                </Box>
+                                <Box minW={0}>
+                                  <HStack spacing={2}>
+                                    <Text
+                                      fontSize='sm'
+                                      fontWeight={600}
+                                      noOfLines={1}
+                                    >
+                                      {bidder.name}
+                                    </Text>
+                                    {auction.currentBidder?._id ===
+                                      bidder._id &&
+                                      auction.status === "active" && (
+                                        <Badge
+                                          colorScheme='green'
+                                          fontSize='2xs'
+                                        >
+                                          Leading
+                                        </Badge>
+                                      )}
+                                    {auction.winner?._id === bidder._id && (
+                                      <Badge
+                                        colorScheme='yellow'
+                                        fontSize='2xs'
+                                      >
+                                        Winner
+                                      </Badge>
+                                    )}
+                                  </HStack>
+                                  <Text fontSize='xs' color='whiteAlpha.400'>
+                                    Last bid{" "}
+                                    {formatDistanceToNow(
+                                      new Date(bidder.lastBid),
+                                      { addSuffix: true },
+                                    )}
+                                  </Text>
+                                </Box>
+                              </HStack>
+                              <Text
+                                fontSize='sm'
+                                color='whiteAlpha.600'
+                                w='80px'
+                                textAlign='center'
+                              >
+                                {bidder.bidCount} bid
+                                {bidder.bidCount !== 1 ? "s" : ""}
+                              </Text>
+                              <Text
+                                fontWeight={700}
+                                color={i === 0 ? "gold.400" : "whiteAlpha.700"}
+                                fontSize='sm'
+                                w='110px'
+                                textAlign='right'
+                              >
+                                {bidder.highestBid} cr
+                              </Text>
+                            </HStack>
+                            {i < uniqueBidders.length - 1 && (
+                              <Divider borderColor='whiteAlpha.50' />
+                            )}
+                          </Box>
+                        ))}
+                      </VStack>
+                    )}
+                  </Box>
+                </TabPanel>
+
+                {/* Tab 3: Description */}
                 <TabPanel px={0}>
                   <Box
                     bg='dark.700'
@@ -380,16 +675,129 @@ export default function AdminAuctionDetailPage() {
                     borderRadius='xl'
                     p={5}
                   >
-                    <Text
-                      color='whiteAlpha.700'
-                      whiteSpace='pre-wrap'
-                      fontSize='sm'
-                      lineHeight={1.8}
-                    >
-                      {auction.description}
-                    </Text>
+                    <VStack spacing={4} align='stretch'>
+                      <Box>
+                        <Text
+                          fontSize='xs'
+                          color='whiteAlpha.400'
+                          mb={1}
+                          fontWeight={600}
+                          textTransform='uppercase'
+                          letterSpacing='wider'
+                        >
+                          About This Auction
+                        </Text>
+                        <Text
+                          color='whiteAlpha.700'
+                          whiteSpace='pre-wrap'
+                          fontSize='sm'
+                          lineHeight={1.8}
+                        >
+                          {auction.description}
+                        </Text>
+                      </Box>
+                      <Divider borderColor='whiteAlpha.100' />
+                      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                        <Box>
+                          <Text
+                            fontSize='xs'
+                            color='whiteAlpha.400'
+                            mb={2}
+                            fontWeight={600}
+                            textTransform='uppercase'
+                            letterSpacing='wider'
+                          >
+                            Auction Timeline
+                          </Text>
+                          <VStack spacing={2} align='stretch'>
+                            <HStack justify='space-between'>
+                              <Text fontSize='xs' color='whiteAlpha.500'>
+                                Created
+                              </Text>
+                              <Text fontSize='xs' color='whiteAlpha.700'>
+                                {auction.createdAt
+                                  ? format(
+                                      new Date(auction.createdAt),
+                                      "MMM d, yyyy HH:mm",
+                                    )
+                                  : "—"}
+                              </Text>
+                            </HStack>
+                            <HStack justify='space-between'>
+                              <Text fontSize='xs' color='whiteAlpha.500'>
+                                Starts
+                              </Text>
+                              <Text fontSize='xs' color='whiteAlpha.700'>
+                                {format(
+                                  new Date(auction.startTime),
+                                  "MMM d, yyyy HH:mm",
+                                )}
+                              </Text>
+                            </HStack>
+                            <HStack justify='space-between'>
+                              <Text fontSize='xs' color='whiteAlpha.500'>
+                                Ends
+                              </Text>
+                              <Text fontSize='xs' color='whiteAlpha.700'>
+                                {format(
+                                  new Date(auction.endTime),
+                                  "MMM d, yyyy HH:mm",
+                                )}
+                              </Text>
+                            </HStack>
+                          </VStack>
+                        </Box>
+                        <Box>
+                          <Text
+                            fontSize='xs'
+                            color='whiteAlpha.400'
+                            mb={2}
+                            fontWeight={600}
+                            textTransform='uppercase'
+                            letterSpacing='wider'
+                          >
+                            Bid Rules
+                          </Text>
+                          <VStack spacing={2} align='stretch'>
+                            <HStack justify='space-between'>
+                              <Text fontSize='xs' color='whiteAlpha.500'>
+                                Starting Bid
+                              </Text>
+                              <Text
+                                fontSize='xs'
+                                fontWeight={700}
+                                color='brand.300'
+                              >
+                                {auction.minBid} cr
+                              </Text>
+                            </HStack>
+                            <HStack justify='space-between'>
+                              <Text fontSize='xs' color='whiteAlpha.500'>
+                                Increment
+                              </Text>
+                              <Text
+                                fontSize='xs'
+                                fontWeight={700}
+                                color='cyber.400'
+                              >
+                                +{auction.bidIncrement} cr
+                              </Text>
+                            </HStack>
+                            <HStack justify='space-between'>
+                              <Text fontSize='xs' color='whiteAlpha.500'>
+                                Category
+                              </Text>
+                              <Badge colorScheme='purple' fontSize='2xs'>
+                                {auction.category}
+                              </Badge>
+                            </HStack>
+                          </VStack>
+                        </Box>
+                      </SimpleGrid>
+                    </VStack>
                   </Box>
                 </TabPanel>
+
                 {editing && (
                   <TabPanel px={0}>
                     <Box

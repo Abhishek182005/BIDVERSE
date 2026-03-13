@@ -24,6 +24,15 @@ const nextConfig = {
     };
     // Force CJS resolution for @chakra-ui packages
     config.resolve.conditionNames = ["require", "node", "default"];
+    // jsPDF uses Node.js 'fs' module internally; mark it as empty on the client
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        stream: false,
+      };
+    }
     return config;
   },
   images: {

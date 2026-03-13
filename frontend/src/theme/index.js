@@ -2,16 +2,16 @@ import { extendTheme } from "@chakra-ui/react";
 
 const colors = {
   brand: {
-    50: "#f0edff",
-    100: "#d4ccff",
-    200: "#b8aaff",
-    300: "#9b87ff",
-    400: "#7f64ff",
-    500: "#6C63FF", // primary purple
-    600: "#5a51d6",
-    700: "#4840ad",
-    800: "#362f84",
-    900: "#241e5b",
+    50: "#e6f0ff",
+    100: "#b3d4ff",
+    200: "#80b8ff",
+    300: "#4d9cff",
+    400: "#2b85ff",
+    500: "#1D72F5", // primary blue
+    600: "#155dc7",
+    700: "#0e4799",
+    800: "#08306b",
+    900: "#031a3d",
   },
   gold: {
     50: "#fffbeb",

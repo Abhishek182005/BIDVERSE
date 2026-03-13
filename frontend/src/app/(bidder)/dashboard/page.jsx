@@ -33,8 +33,9 @@ import {
   TriangleUpIcon,
   TriangleDownIcon,
   SearchIcon,
+  ExternalLinkIcon,
 } from "@chakra-ui/icons";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 
 const MotionBox = motion(Box);
 
@@ -134,6 +135,102 @@ export default function BidderDashboard() {
             index={3}
           />
         </SimpleGrid>
+
+        {/* Won Auctions */}
+        {wonBids.length > 0 && (
+          <Box mb={8}>
+            <HStack justify='space-between' mb={4}>
+              <HStack spacing={2}>
+                <StarIcon color='gold.400' boxSize={4} />
+                <Heading size='md'>Auctions You Won</Heading>
+              </HStack>
+              <Button
+                size='sm'
+                variant='ghost'
+                color='gold.400'
+                onClick={() => router.push("/history")}
+              >
+                View All →
+              </Button>
+            </HStack>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+              {wonBids.map((bid) => (
+                <Box
+                  key={bid._id}
+                  bg='dark.700'
+                  border='1px solid'
+                  borderColor='gold.600'
+                  borderRadius='xl'
+                  p={4}
+                  cursor='pointer'
+                  onClick={() =>
+                    bid.auction?._id &&
+                    router.push(`/auctions/${bid.auction._id}`)
+                  }
+                  _hover={{
+                    borderColor: "gold.400",
+                    transform: "translateY(-2px)",
+                  }}
+                  transition='all 0.2s'
+                  position='relative'
+                  overflow='hidden'
+                >
+                  <Box
+                    position='absolute'
+                    top={0}
+                    left={0}
+                    right={0}
+                    h='3px'
+                    bg='linear-gradient(90deg, transparent, #FFD700, transparent)'
+                  />
+                  <HStack justify='space-between' mb={3}>
+                    <Badge colorScheme='yellow' fontSize='2xs' px={2} py={0.5}>
+                      🏆 WON
+                    </Badge>
+                    <Text fontSize='xs' color='whiteAlpha.400'>
+                      {formatDistanceToNow(new Date(bid.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </Text>
+                  </HStack>
+                  <Text
+                    fontWeight={700}
+                    fontSize='sm'
+                    noOfLines={2}
+                    mb={3}
+                    lineHeight={1.4}
+                  >
+                    {bid.auction?.title || "Auction"}
+                  </Text>
+                  <HStack justify='space-between' align='flex-end'>
+                    <Box>
+                      <Text fontSize='10px' color='whiteAlpha.400' mb={0.5}>
+                        WINNING BID
+                      </Text>
+                      <HStack spacing={1} align='baseline'>
+                        <Text fontWeight={800} color='gold.400' fontSize='2xl'>
+                          {bid.amount}
+                        </Text>
+                        <Text fontSize='xs' color='whiteAlpha.400'>
+                          cr
+                        </Text>
+                      </HStack>
+                    </Box>
+                    {bid.auction?.category && (
+                      <Badge
+                        colorScheme='purple'
+                        fontSize='2xs'
+                        variant='subtle'
+                      >
+                        {bid.auction.category}
+                      </Badge>
+                    )}
+                  </HStack>
+                </Box>
+              ))}
+            </SimpleGrid>
+          </Box>
+        )}
 
         {/* Active Bids */}
         {activeBids.length > 0 && (

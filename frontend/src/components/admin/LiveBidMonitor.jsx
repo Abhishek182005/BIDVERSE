@@ -84,7 +84,7 @@ export default function LiveBidMonitor({ auctionId, initialBids = [] }) {
           </VStack>
         </Center>
       ) : (
-        <Box overflowX='auto' maxH='400px' overflowY='auto'>
+        <Box overflowX='auto' maxH='560px' overflowY='auto'>
           <Table size='sm' variant='unstyled'>
             <Thead position='sticky' top={0} bg='dark.700' zIndex={1}>
               <Tr>

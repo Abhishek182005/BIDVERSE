@@ -40,6 +40,7 @@ import { useRouter } from "next/navigation";
 import { auctionsApi } from "@/lib/api";
 import { format } from "date-fns";
 import { useRef } from "react";
+import { StarIcon } from "@chakra-ui/icons";
 
 const MotionBox = motion(Box);
 
@@ -48,6 +49,13 @@ const STATUS_COLORS = {
   active: "green",
   ended: "gray",
   cancelled: "red",
+};
+
+const STATUS_BAR = {
+  pending: "#FFD700",
+  active: "#22c55e",
+  ended: "#6b7280",
+  cancelled: "#ef4444",
 };
 
 export default function AdminAuctionsPage() {
@@ -146,21 +154,25 @@ export default function AdminAuctionsPage() {
 
         {/* Filters */}
         <HStack mb={5} gap={3} flexWrap='wrap'>
-          <InputGroup maxW='260px'>
-            <InputLeftElement pointerEvents='none'>
+          <InputGroup maxW='300px' flex={1}>
+            <InputLeftElement pointerEvents='none' pl={1}>
               <Text color='whiteAlpha.400' fontSize='sm'>
                 🔍
               </Text>
             </InputLeftElement>
             <Input
-              placeholder='Search auctions...'
+              placeholder='Search auctions…'
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               bg='dark.700'
               border='1px solid'
               borderColor='whiteAlpha.200'
-              _focus={{ borderColor: "brand.400" }}
+              _focus={{
+                borderColor: "brand.400",
+                boxShadow: "0 0 0 1px #1D72F5",
+              }}
+              borderRadius='lg'
             />
           </InputGroup>
           <Select
@@ -169,10 +181,11 @@ export default function AdminAuctionsPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            maxW='160px'
+            maxW='170px'
             bg='dark.700'
             border='1px solid'
             borderColor='whiteAlpha.200'
+            borderRadius='lg'
             _focus={{ borderColor: "brand.400" }}
           >
             <option value=''>All Statuses</option>
@@ -214,26 +227,33 @@ export default function AdminAuctionsPage() {
             <Box overflowX='auto'>
               <Table variant='unstyled'>
                 <Thead>
-                  <Tr borderBottom='1px solid' borderColor='whiteAlpha.100'>
-                    <Th color='whiteAlpha.400' fontSize='xs'>
+                  <Tr
+                    bg='whiteAlpha.50'
+                    borderBottom='1px solid'
+                    borderColor='whiteAlpha.100'
+                  >
+                    <Th color='whiteAlpha.500' fontSize='xs' py={3} pl={5}>
                       AUCTION
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs'>
+                    <Th color='whiteAlpha.500' fontSize='xs' py={3}>
                       CATEGORY
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs'>
+                    <Th color='whiteAlpha.500' fontSize='xs' py={3}>
                       STATUS
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs' isNumeric>
+                    <Th color='whiteAlpha.500' fontSize='xs' py={3} isNumeric>
                       CURRENT BID
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs' isNumeric>
+                    <Th color='whiteAlpha.500' fontSize='xs' py={3} isNumeric>
                       BIDS
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs'>
+                    <Th color='whiteAlpha.500' fontSize='xs' py={3}>
+                      WINNER
+                    </Th>
+                    <Th color='whiteAlpha.500' fontSize='xs' py={3}>
                       END TIME
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs'>
+                    <Th color='whiteAlpha.500' fontSize='xs' py={3}>
                       ACTIONS
                     </Th>
                   </Tr>
@@ -244,17 +264,30 @@ export default function AdminAuctionsPage() {
                       key={auction._id}
                       borderBottom='1px solid'
                       borderColor='whiteAlpha.50'
+                      position='relative'
                       _hover={{ bg: "whiteAlpha.50" }}
+                      transition='background 0.15s'
                     >
-                      <Td py={3}>
+                      {/* Status stripe */}
+                      <Td py={0} px={0} w='3px' verticalAlign='middle'>
+                        <Box
+                          h='60px'
+                          w='3px'
+                          bg={STATUS_BAR[auction.status] || "transparent"}
+                          borderRadius='full'
+                        />
+                      </Td>
+                      <Td py={3} pl={4}>
                         <HStack spacing={3}>
                           <Box
-                            w='40px'
-                            h='40px'
-                            borderRadius='md'
+                            w='42px'
+                            h='42px'
+                            borderRadius='lg'
                             overflow='hidden'
                             flexShrink={0}
                             bg='dark.600'
+                            border='1px solid'
+                            borderColor='whiteAlpha.100'
                           >
                             {auction.image ? (
                               <Image
@@ -266,20 +299,25 @@ export default function AdminAuctionsPage() {
                               />
                             ) : (
                               <Center w='full' h='full'>
-                                <Text>🔨</Text>
+                                <Text fontSize='lg'>🔨</Text>
                               </Center>
                             )}
                           </Box>
                           <Box>
                             <Text
                               fontSize='sm'
-                              fontWeight={600}
+                              fontWeight={700}
                               noOfLines={1}
-                              maxW='180px'
+                              maxW='200px'
+                              cursor='pointer'
+                              _hover={{ color: "brand.300" }}
+                              onClick={() =>
+                                router.push(`/admin/auctions/${auction._id}`)
+                              }
                             >
                               {auction.title}
                             </Text>
-                            <Text fontSize='xs' color='whiteAlpha.400'>
+                            <Text fontSize='xs' color='whiteAlpha.400' mt={0.5}>
                               {format(
                                 new Date(auction.startTime),
                                 "MMM d, yyyy",
@@ -290,9 +328,12 @@ export default function AdminAuctionsPage() {
                       </Td>
                       <Td py={3}>
                         <Badge
-                          variant='outline'
-                          colorScheme='purple'
+                          variant='subtle'
+                          colorScheme='blue'
                           fontSize='2xs'
+                          px={2}
+                          py={0.5}
+                          borderRadius='full'
                         >
                           {auction.category}
                         </Badge>
@@ -300,17 +341,42 @@ export default function AdminAuctionsPage() {
                       <Td py={3}>
                         <Badge
                           colorScheme={STATUS_COLORS[auction.status] || "gray"}
+                          px={2}
+                          py={0.5}
+                          borderRadius='full'
+                          fontSize='2xs'
+                          fontWeight={700}
                         >
-                          {auction.status}
+                          {auction.status.toUpperCase()}
                         </Badge>
                       </Td>
                       <Td py={3} isNumeric>
-                        <Text fontWeight={700} color='gold.400' fontSize='sm'>
+                        <Text fontWeight={800} color='gold.400' fontSize='sm'>
                           {auction.currentBid || auction.minBid} cr
                         </Text>
                       </Td>
                       <Td py={3} isNumeric>
-                        <Text fontSize='sm'>{auction.totalBids}</Text>
+                        <Text fontSize='sm' fontWeight={600}>
+                          {auction.totalBids}
+                        </Text>
+                      </Td>
+                      <Td py={3}>
+                        {auction.winner ? (
+                          <HStack spacing={1}>
+                            <StarIcon color='gold.400' boxSize={3} />
+                            <Text
+                              fontSize='sm'
+                              color='gold.300'
+                              fontWeight={600}
+                            >
+                              {auction.winner.name || "—"}
+                            </Text>
+                          </HStack>
+                        ) : (
+                          <Text fontSize='xs' color='whiteAlpha.300'>
+                            —
+                          </Text>
+                        )}
                       </Td>
                       <Td py={3}>
                         <Text fontSize='xs' color='whiteAlpha.500'>
@@ -319,7 +385,7 @@ export default function AdminAuctionsPage() {
                       </Td>
                       <Td py={3}>
                         <HStack spacing={1}>
-                          <Tooltip label='View/Monitor'>
+                          <Tooltip label='View Details'>
                             <IconButton
                               icon={<Text fontSize='sm'>👁</Text>}
                               size='xs'

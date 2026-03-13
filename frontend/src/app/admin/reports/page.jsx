@@ -28,6 +28,7 @@ import {
   StatHelpText,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import {
   BarChart,
   Bar,
@@ -85,6 +86,7 @@ export default function AdminReportsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const toast = useToast();
+  const router = useRouter();
 
   const fetchReports = async () => {
     setLoading(true);
@@ -267,7 +269,9 @@ export default function AdminReportsPage() {
                       key={a._id}
                       borderBottom='1px solid'
                       borderColor='whiteAlpha.50'
-                      _hover={{ bg: "whiteAlpha.50" }}
+                      cursor='pointer'
+                      _hover={{ bg: "whiteAlpha.100" }}
+                      onClick={() => router.push(`/admin/auctions/${a._id}`)}
                     >
                       <Td p={3}>
                         <Text
@@ -275,6 +279,8 @@ export default function AdminReportsPage() {
                           fontWeight={600}
                           noOfLines={1}
                           maxW='200px'
+                          color='blue.300'
+                          _hover={{ textDecoration: "underline" }}
                         >
                           {a.title}
                         </Text>

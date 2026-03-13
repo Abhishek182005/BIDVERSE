@@ -26,7 +26,7 @@ body {
 
 /* Gradient text utility */
 .gradient-text {
-  background: linear-gradient(135deg, #6c63ff 0%, #00d4ff 100%);
+  background: linear-gradient(135deg, #1d72f5 0%, #00d4ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -37,6 +37,19 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Native select option dark theme fix */
+select,
+select option,
+select:focus {
+  background-color: #1e1e2e !important;
+  color: #ffffff !important;
+}
+select option:hover,
+select option:checked {
+  background-color: #1d72f5 !important;
+  color: #ffffff !important;
 }
 
 /* Glow animations */
