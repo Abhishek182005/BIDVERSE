@@ -33,13 +33,13 @@ const auctionValidation = [
   body("category")
     .optional()
     .isIn([
-      "Art",
       "Electronics",
-      "Jewelry",
+      "Art",
       "Collectibles",
-      "Fashion",
+      "Clothing",
+      "Sports",
+      "Jewellery",
       "Vehicles",
-      "Real Estate",
       "Other",
     ]),
 ];
