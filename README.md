@@ -192,6 +192,3 @@ BIDVERSE/
 
 ---
 
-## Team
-
-Built for the **Unstop Auction Platform Hackathon Challenge**.
