@@ -16,3 +16,4 @@ coverage/
 *.key
 uploads/
 EXPLANATION.md
+package-lock.json
