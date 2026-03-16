@@ -193,7 +193,7 @@ export default function AutoBidModal({ isOpen, onClose, auction, onSuccess }) {
                 <FormLabel fontSize='sm'>Maximum Budget (credits)</FormLabel>
                 <NumberInput
                   value={maxAmount}
-                  onChange={(_, val) => setMaxAmount(val)}
+                  onChange={(_, val) => setMaxAmount(isNaN(val) ? 0 : val)}
                   min={minNext}
                   max={user?.credits || 0}
                   step={auction?.bidIncrement || 1}

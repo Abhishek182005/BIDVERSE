@@ -337,13 +337,23 @@ export default function AdminDashboard() {
                     <Th color='whiteAlpha.400' fontSize='xs' pb={3}>
                       BIDDER
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs' pb={3}>
+                    <Th
+                      color='whiteAlpha.400'
+                      fontSize='xs'
+                      pb={3}
+                      display={{ base: "none", sm: "table-cell" }}
+                    >
                       AUCTION
                     </Th>
                     <Th color='whiteAlpha.400' fontSize='xs' pb={3} isNumeric>
                       AMOUNT
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs' pb={3}>
+                    <Th
+                      color='whiteAlpha.400'
+                      fontSize='xs'
+                      pb={3}
+                      display={{ base: "none", sm: "table-cell" }}
+                    >
                       TIME
                     </Th>
                   </Tr>
@@ -365,7 +375,7 @@ export default function AdminDashboard() {
                           <Text fontSize='sm'>{bid.bidder?.name}</Text>
                         </HStack>
                       </Td>
-                      <Td py={2}>
+                      <Td py={2} display={{ base: "none", sm: "table-cell" }}>
                         <Text
                           fontSize='sm'
                           color='whiteAlpha.700'
@@ -380,7 +390,7 @@ export default function AdminDashboard() {
                           {bid.amount} cr
                         </Text>
                       </Td>
-                      <Td py={2}>
+                      <Td py={2} display={{ base: "none", sm: "table-cell" }}>
                         <Text fontSize='xs' color='whiteAlpha.400'>
                           {formatDistanceToNow(new Date(bid.createdAt), {
                             addSuffix: true,

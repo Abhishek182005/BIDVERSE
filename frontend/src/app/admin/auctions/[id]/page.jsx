@@ -232,7 +232,7 @@ export default function AdminAuctionDetailPage() {
             </Text>
           </Box>
           <HStack flexWrap='wrap' gap={2}>
-            {auction.status === "pending" && (
+            {auction.status !== "ended" && auction.status !== "cancelled" && (
               <Button
                 size='sm'
                 variant='outline'
@@ -294,7 +294,7 @@ export default function AdminAuctionDetailPage() {
               border='1px solid'
               borderColor={s.border}
               borderRadius='xl'
-              p={4}
+              p={{ base: 3, md: 4 }}
               position='relative'
               overflow='hidden'
             >
@@ -309,7 +309,11 @@ export default function AdminAuctionDetailPage() {
               <Text fontSize='xs' color='whiteAlpha.500' mb={1}>
                 {s.label}
               </Text>
-              <Text fontWeight={800} fontSize='2xl' color={s.color}>
+              <Text
+                fontWeight={800}
+                fontSize={{ base: "lg", md: "2xl" }}
+                color={s.color}
+              >
                 {s.value}
               </Text>
             </Box>
@@ -807,11 +811,33 @@ export default function AdminAuctionDetailPage() {
                       borderRadius='xl'
                       p={5}
                     >
+                      {auction.status === "active" && auction.totalBids > 0 && (
+                        <Box
+                          mb={4}
+                          p={3}
+                          bg='rgba(255,165,0,0.1)'
+                          border='1px solid'
+                          borderColor='orange.500'
+                          borderRadius='lg'
+                        >
+                          <Text
+                            fontSize='xs'
+                            color='orange.300'
+                            fontWeight={600}
+                          >
+                            ⚠️ Bidding is active — only Description and Image
+                            can be changed.
+                          </Text>
+                        </Box>
+                      )}
                       <AuctionForm
                         defaultValues={auction}
                         onSubmit={handleEdit}
                         isLoading={saving}
                         submitLabel='Save Changes'
+                        restrictedEdit={
+                          auction.status === "active" && auction.totalBids > 0
+                        }
                       />
                     </Box>
                   </TabPanel>

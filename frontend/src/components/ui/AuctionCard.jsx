@@ -65,7 +65,12 @@ export default function AuctionCard({ auction, index = 0, showBidBtn = true }) {
         flexDirection='column'
       >
         {/* Image */}
-        <Box position='relative' h='200px' overflow='hidden' bg='dark.800'>
+        <Box
+          position='relative'
+          h={{ base: "180px", md: "200px" }}
+          overflow='hidden'
+          bg='dark.800'
+        >
           <Image
             src={
               auction.image ||

@@ -35,14 +35,25 @@ export default function LiveBidMonitor({ auctionId, initialBids = [] }) {
     if (!auctionId) return;
     joinAuction(auctionId);
 
+    // On reconnect: re-fetch the bid list to show any bids missed during disconnection
+    const cleanupConnect = on("connect", async () => {
+      try {
+        const res = await bidsApi.getAuctionBids(auctionId);
+        setBids(res.data.data || []);
+      } catch (_) {}
+    });
+
     const cleanup = on("new_bid", (data) => {
-      if (data.auctionId !== auctionId) return;
+      const auctionData = data.auction;
+      if (!auctionData || auctionData._id?.toString() !== auctionId) return;
+
+      const bidData = data.bid;
       const newBid = {
-        _id: Date.now().toString(),
-        bidder: { name: data.bidderName },
-        amount: data.amount,
-        createdAt: new Date().toISOString(),
-        status: "active",
+        _id: bidData?._id || Date.now().toString(),
+        bidder: bidData?.bidder || auctionData.currentBidder,
+        amount: auctionData.currentBid,
+        createdAt: bidData?.createdAt || new Date().toISOString(),
+        status: bidData?.status || "active",
         isNew: true,
       };
       setFlash(newBid._id);
@@ -52,6 +63,7 @@ export default function LiveBidMonitor({ auctionId, initialBids = [] }) {
 
     return () => {
       leaveAuction(auctionId);
+      cleanupConnect?.();
       cleanup?.();
     };
   }, [auctionId]);

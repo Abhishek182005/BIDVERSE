@@ -59,10 +59,19 @@ async function _executeBidInternal(
       });
       previousBid.creditsReturned = true;
     } else {
-      await User.findByIdAndUpdate(previousBid.bidder, {
-        $inc: { credits: previousBid.amount },
-      });
+      const refundedUser = await User.findByIdAndUpdate(
+        previousBid.bidder,
+        { $inc: { credits: previousBid.amount } },
+        { new: true, select: "credits" },
+      );
       previousBid.creditsReturned = true;
+
+      // Sync the outbid user's credits in their browser immediately
+      if (refundedUser) {
+        io?.to(`user:${previousBid.bidder.toString()}`).emit("credit_updated", {
+          credits: refundedUser.credits,
+        });
+      }
 
       const prefix = isAutoBid ? "An auto-bid" : "Someone";
       await Notification.create({
@@ -87,6 +96,11 @@ async function _executeBidInternal(
 
   bidder.credits -= bidAmount;
   await bidder.save({ validateBeforeSave: false });
+
+  // Sync the bidder's credits in their browser immediately
+  io?.to(`user:${bidderIdStr}`).emit("credit_updated", {
+    credits: bidder.credits,
+  });
 
   const newBid = await Bid.create({
     auction: auctionId,

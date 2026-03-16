@@ -153,8 +153,18 @@ export default function AdminAuctionsPage() {
         </Flex>
 
         {/* Filters */}
-        <HStack mb={5} gap={3} flexWrap='wrap'>
-          <InputGroup maxW='300px' flex={1}>
+        <Flex
+          mb={5}
+          gap={3}
+          flexWrap='wrap'
+          direction={{ base: "column", sm: "row" }}
+          align={{ base: "stretch", sm: "center" }}
+        >
+          <InputGroup
+            w={{ base: "100%", sm: "auto" }}
+            maxW={{ base: "100%", sm: "300px" }}
+            flex={{ sm: 1 }}
+          >
             <InputLeftElement pointerEvents='none' pl={1}>
               <Text color='whiteAlpha.400' fontSize='sm'>
                 🔍
@@ -181,6 +191,7 @@ export default function AdminAuctionsPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
+            w={{ base: "100%", sm: "170px" }}
             maxW='170px'
             bg='dark.700'
             border='1px solid'
@@ -194,7 +205,7 @@ export default function AdminAuctionsPage() {
             <option value='ended'>Ended</option>
             <option value='cancelled'>Cancelled</option>
           </Select>
-        </HStack>
+        </Flex>
 
         {/* Table */}
         <Box
@@ -235,7 +246,12 @@ export default function AdminAuctionsPage() {
                     <Th color='whiteAlpha.500' fontSize='xs' py={3} pl={5}>
                       AUCTION
                     </Th>
-                    <Th color='whiteAlpha.500' fontSize='xs' py={3}>
+                    <Th
+                      color='whiteAlpha.500'
+                      fontSize='xs'
+                      py={3}
+                      display={{ base: "none", md: "table-cell" }}
+                    >
                       CATEGORY
                     </Th>
                     <Th color='whiteAlpha.500' fontSize='xs' py={3}>
@@ -247,10 +263,20 @@ export default function AdminAuctionsPage() {
                     <Th color='whiteAlpha.500' fontSize='xs' py={3} isNumeric>
                       BIDS
                     </Th>
-                    <Th color='whiteAlpha.500' fontSize='xs' py={3}>
+                    <Th
+                      color='whiteAlpha.500'
+                      fontSize='xs'
+                      py={3}
+                      display={{ base: "none", md: "table-cell" }}
+                    >
                       WINNER
                     </Th>
-                    <Th color='whiteAlpha.500' fontSize='xs' py={3}>
+                    <Th
+                      color='whiteAlpha.500'
+                      fontSize='xs'
+                      py={3}
+                      display={{ base: "none", sm: "table-cell" }}
+                    >
                       END TIME
                     </Th>
                     <Th color='whiteAlpha.500' fontSize='xs' py={3}>
@@ -326,7 +352,7 @@ export default function AdminAuctionsPage() {
                           </Box>
                         </HStack>
                       </Td>
-                      <Td py={3}>
+                      <Td py={3} display={{ base: "none", md: "table-cell" }}>
                         <Badge
                           variant='subtle'
                           colorScheme='blue'
@@ -360,7 +386,7 @@ export default function AdminAuctionsPage() {
                           {auction.totalBids}
                         </Text>
                       </Td>
-                      <Td py={3}>
+                      <Td py={3} display={{ base: "none", md: "table-cell" }}>
                         {auction.winner ? (
                           <HStack spacing={1}>
                             <StarIcon color='gold.400' boxSize={3} />
@@ -378,7 +404,7 @@ export default function AdminAuctionsPage() {
                           </Text>
                         )}
                       </Td>
-                      <Td py={3}>
+                      <Td py={3} display={{ base: "none", sm: "table-cell" }}>
                         <Text fontSize='xs' color='whiteAlpha.500'>
                           {format(new Date(auction.endTime), "MMM d, HH:mm")}
                         </Text>
@@ -396,21 +422,22 @@ export default function AdminAuctionsPage() {
                               aria-label='View auction'
                             />
                           </Tooltip>
-                          {auction.status === "pending" && (
-                            <Tooltip label='Edit'>
-                              <IconButton
-                                icon={<Text fontSize='sm'>✏️</Text>}
-                                size='xs'
-                                variant='ghost'
-                                onClick={() =>
-                                  router.push(
-                                    `/admin/auctions/${auction._id}?edit=true`,
-                                  )
-                                }
-                                aria-label='Edit auction'
-                              />
-                            </Tooltip>
-                          )}
+                          {auction.status !== "ended" &&
+                            auction.status !== "cancelled" && (
+                              <Tooltip label='Edit'>
+                                <IconButton
+                                  icon={<Text fontSize='sm'>✏️</Text>}
+                                  size='xs'
+                                  variant='ghost'
+                                  onClick={() =>
+                                    router.push(
+                                      `/admin/auctions/${auction._id}?edit=true`,
+                                    )
+                                  }
+                                  aria-label='Edit auction'
+                                />
+                              </Tooltip>
+                            )}
                           {(auction.status === "pending" ||
                             auction.status === "cancelled") && (
                             <Tooltip label='Delete'>

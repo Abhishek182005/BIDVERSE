@@ -132,7 +132,7 @@ export default function UserCreditsModal({ isOpen, onClose, user, onSuccess }) {
               <FormLabel fontSize='sm'>Amount</FormLabel>
               <NumberInput
                 value={amount}
-                onChange={(_, val) => setAmount(val)}
+                onChange={(_, val) => setAmount(isNaN(val) ? 0 : val)}
                 min={1}
                 max={100000}
               >

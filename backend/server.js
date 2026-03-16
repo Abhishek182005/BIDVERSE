@@ -34,6 +34,9 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+  // Prevent transport-close disconnects from background/throttled browser tabs
+  pingTimeout: 60000,
+  pingInterval: 25000,
 });
 
 // ─── Security Middleware ────────────────────────────────────────────────────

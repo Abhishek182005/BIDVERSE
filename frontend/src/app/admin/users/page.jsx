@@ -117,7 +117,7 @@ export default function AdminUsersPage() {
         </Flex>
 
         {/* Search */}
-        <InputGroup maxW='300px' mb={5}>
+        <InputGroup w={{ base: "100%", sm: "300px" }} maxW='300px' mb={5}>
           <InputLeftElement pointerEvents='none'>
             <Text color='whiteAlpha.400' fontSize='sm'>
               🔍
@@ -167,7 +167,11 @@ export default function AdminUsersPage() {
                     <Th color='whiteAlpha.400' fontSize='xs'>
                       STATUS
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs'>
+                    <Th
+                      color='whiteAlpha.400'
+                      fontSize='xs'
+                      display={{ base: "none", md: "table-cell" }}
+                    >
                       JOINED
                     </Th>
                     <Th color='whiteAlpha.400' fontSize='xs'>
@@ -206,7 +210,7 @@ export default function AdminUsersPage() {
                           {user.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </Td>
-                      <Td py={3}>
+                      <Td py={3} display={{ base: "none", md: "table-cell" }}>
                         <Text fontSize='xs' color='whiteAlpha.400'>
                           {new Date(user.createdAt).toLocaleDateString()}
                         </Text>

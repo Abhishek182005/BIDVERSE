@@ -116,8 +116,14 @@ export default function BidderAuctionsPage() {
         </Flex>
 
         {/* Filters */}
-        <HStack mb={6} gap={3} flexWrap='wrap'>
-          <InputGroup maxW='260px'>
+        <Flex
+          mb={6}
+          gap={3}
+          flexWrap='wrap'
+          direction={{ base: "column", sm: "row" }}
+          align={{ base: "stretch", sm: "center" }}
+        >
+          <InputGroup w={{ base: "100%", sm: "260px" }}>
             <InputLeftElement pointerEvents='none'>
               <Text color='whiteAlpha.400' fontSize='sm'>
                 🔍
@@ -136,7 +142,7 @@ export default function BidderAuctionsPage() {
           </InputGroup>
 
           {/* Status Tabs */}
-          <HStack spacing={1}>
+          <HStack spacing={1} flexWrap='wrap'>
             {[
               { label: "Live", value: "active" },
               { label: "Upcoming", value: "pending" },
@@ -163,6 +169,7 @@ export default function BidderAuctionsPage() {
               setCategory(e.target.value);
               setPage(1);
             }}
+            w={{ base: "100%", sm: "160px" }}
             maxW='160px'
             bg='dark.700'
             border='1px solid'
@@ -175,7 +182,7 @@ export default function BidderAuctionsPage() {
               </option>
             ))}
           </Select>
-        </HStack>
+        </Flex>
 
         {loading ? (
           <Center py={20}>

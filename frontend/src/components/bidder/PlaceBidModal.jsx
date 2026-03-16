@@ -244,7 +244,7 @@ export default function PlaceBidModal({ isOpen, onClose, auction, onSuccess }) {
               <FormLabel fontSize='sm'>Your Bid Amount *</FormLabel>
               <NumberInput
                 value={amount}
-                onChange={(_, val) => setAmount(val)}
+                onChange={(_, val) => setAmount(isNaN(val) ? 0 : val)}
                 min={minNext}
                 max={user?.credits || 0}
                 step={auction?.bidIncrement || 1}

@@ -30,10 +30,14 @@ export function AuthProvider({ children }) {
             setUser(data.user);
             localStorage.setItem("bv_user", JSON.stringify(data.user));
           })
-          .catch(() => {
-            localStorage.removeItem("bv_token");
-            localStorage.removeItem("bv_user");
-            setUser(null);
+          .catch((err) => {
+            // Only clear auth on actual token failure (401/403).
+            // Network errors (server temporarily down) should NOT log the user out.
+            if (err.response?.status === 401 || err.response?.status === 403) {
+              localStorage.removeItem("bv_token");
+              localStorage.removeItem("bv_user");
+              setUser(null);
+            }
           })
           .finally(() => setLoading(false));
       } catch {

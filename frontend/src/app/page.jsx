@@ -47,7 +47,7 @@ const FEATURES = [
   {
     Icon: StarIcon,
     title: "Credit System",
-    desc: "Fair credit-based bidding. Credits returned instantly when outbid â€” zero risk of losing funds.",
+    desc: "Fair credit-based bidding. Credits returned instantly when outbid  zero risk of losing funds.",
     color: "#FFD700",
     bg: "rgba(255,215,0,0.1)",
   },
@@ -81,13 +81,6 @@ const FEATURES = [
   },
 ];
 
-const STATS = [
-  { label: "Active Auctions", value: "200+" },
-  { label: "Registered Bidders", value: "5K+" },
-  { label: "Bids Placed", value: "50K+" },
-  { label: "Credits Traded", value: "2M+" },
-];
-
 const HOW_IT_WORKS = [
   {
     step: "01",
@@ -98,13 +91,13 @@ const HOW_IT_WORKS = [
   {
     step: "02",
     title: "Browse Live Auctions",
-    desc: "Explore hundreds of active auctions across categories â€” from electronics to rare collectibles.",
+    desc: "Explore hundreds of active auctions across categories from electronics to rare collectibles.",
     color: "#00D4FF",
   },
   {
     step: "03",
     title: "Place Your Bid",
-    desc: "Bid with confidence. Credits are only deducted when you win â€” outbid? They're returned instantly.",
+    desc: "Bid with confidence. Credits are only deducted when you win or outbid? They're returned instantly.",
     color: "#FFD700",
   },
   {
@@ -321,7 +314,7 @@ export default function LandingPage() {
                 maxW='480px'
               >
                 The professional real-time auction platform. Place bids, track
-                credits, and compete with thousands of bidders â€” all live, all
+                credits, and compete with thousands of bidders are all live, all
                 transparent.
               </Text>
 
@@ -380,6 +373,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+              display={{ base: "none", lg: "block" }}
             >
               {/* Main auction card */}
               <Box className='glass-card float-animation' p={5} mb={4}>
@@ -581,42 +575,6 @@ export default function LandingPage() {
           </SimpleGrid>
         </Container>
       </Box>
-
-      {/* Stats bar  */}
-      <Box
-        py={12}
-        bg='dark.800'
-        borderY='1px solid'
-        borderColor='whiteAlpha.100'
-      >
-        <Container maxW='5xl'>
-          <SimpleGrid columns={{ base: 2, md: 4 }} spacing={8}>
-            {STATS.map((stat, i) => (
-              <MotionBox
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                textAlign='center'
-              >
-                <Text
-                  fontSize={{ base: "3xl", md: "4xl" }}
-                  fontWeight={900}
-                  className='gradient-text'
-                  lineHeight={1}
-                >
-                  {stat.value}
-                </Text>
-                <Text color='whiteAlpha.500' fontSize='sm' mt={2}>
-                  {stat.label}
-                </Text>
-              </MotionBox>
-            ))}
-          </SimpleGrid>
-        </Container>
-      </Box>
-
       {/*  How It Works */}
       <Box py={24}>
         <Container maxW='6xl'>

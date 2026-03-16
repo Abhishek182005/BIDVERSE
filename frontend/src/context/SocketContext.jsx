@@ -10,12 +10,27 @@ export function SocketProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
+  // Tracks which rooms this client has joined so they can be re-joined after reconnect
+  const activeRoomsRef = useRef(new Set());
 
   useEffect(() => {
     const socket = getSocket();
     socketRef.current = socket;
 
-    const handleConnect = () => setConnected(true);
+    const handleConnect = () => {
+      setConnected(true);
+      // Re-join every tracked room whenever the socket (re)connects
+      activeRoomsRef.current.forEach((room) => {
+        if (room === "admin") {
+          socket.emit("join_admin");
+        } else if (room.startsWith("auction:")) {
+          socket.emit("join_auction", {
+            auctionId: room.replace("auction:", ""),
+          });
+        }
+      });
+    };
+
     const handleDisconnect = () => setConnected(false);
 
     socket.on("connect", handleConnect);
@@ -30,14 +45,17 @@ export function SocketProvider({ children }) {
   }, [isAuthenticated]);
 
   const joinAuction = (auctionId) => {
+    activeRoomsRef.current.add(`auction:${auctionId}`);
     socketRef.current?.emit("join_auction", { auctionId });
   };
 
   const leaveAuction = (auctionId) => {
+    activeRoomsRef.current.delete(`auction:${auctionId}`);
     socketRef.current?.emit("leave_auction", { auctionId });
   };
 
   const joinAdmin = () => {
+    activeRoomsRef.current.add("admin");
     socketRef.current?.emit("join_admin");
   };
 

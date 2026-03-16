@@ -255,10 +255,20 @@ export default function AdminReportsPage() {
                     <Th color='whiteAlpha.400' fontSize='xs' p={3} isNumeric>
                       FINAL BID
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs' p={3}>
+                    <Th
+                      color='whiteAlpha.400'
+                      fontSize='xs'
+                      p={3}
+                      display={{ base: "none", sm: "table-cell" }}
+                    >
                       WINNER
                     </Th>
-                    <Th color='whiteAlpha.400' fontSize='xs' p={3}>
+                    <Th
+                      color='whiteAlpha.400'
+                      fontSize='xs'
+                      p={3}
+                      display={{ base: "none", sm: "table-cell" }}
+                    >
                       CLOSED
                     </Th>
                   </Tr>
@@ -304,7 +314,7 @@ export default function AdminReportsPage() {
                           {a.winningBid || a.currentBid || a.minBid} cr
                         </Text>
                       </Td>
-                      <Td p={3}>
+                      <Td p={3} display={{ base: "none", sm: "table-cell" }}>
                         <Text
                           fontSize='sm'
                           color={a.winner ? "brand.300" : "whiteAlpha.300"}
@@ -312,7 +322,7 @@ export default function AdminReportsPage() {
                           {a.winner?.name || "—"}
                         </Text>
                       </Td>
-                      <Td p={3}>
+                      <Td p={3} display={{ base: "none", sm: "table-cell" }}>
                         <Text fontSize='xs' color='whiteAlpha.400'>
                           {a.closedAt
                             ? format(new Date(a.closedAt), "MMM d, yyyy")

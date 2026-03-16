@@ -89,7 +89,11 @@ export default function BidderDashboard() {
           gap={4}
         >
           <HStack spacing={4}>
-            <Avatar name={user?.name} size='lg' bg='brand.500' />
+            <Avatar
+              name={user?.name}
+              size={{ base: "md", md: "lg" }}
+              bg='brand.500'
+            />
             <Box>
               <Heading size='lg'>
                 Welcome back, {user?.name?.split(" ")[0]}!
@@ -97,7 +101,11 @@ export default function BidderDashboard() {
               <Text color='whiteAlpha.500'>Here's your auction activity</Text>
             </Box>
           </HStack>
-          <Button colorScheme='brand' onClick={() => router.push("/auctions")}>
+          <Button
+            colorScheme='brand'
+            onClick={() => router.push("/auctions")}
+            w={{ base: "100%", sm: "auto" }}
+          >
             Browse Auctions →
           </Button>
         </Flex>

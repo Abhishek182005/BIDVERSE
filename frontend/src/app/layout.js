@@ -10,8 +10,9 @@ export const metadata = {
     "Professional real-time auction platform. Bid, win, and manage auctions with ease.",
   keywords: "auction, bidding, live auction, online auction, credits",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
+    icon: "/auctionfavicon.png",
+    shortcut: "/auctionfavicon.png",
+    apple: "/auctionfavicon.png",
   },
 };
 

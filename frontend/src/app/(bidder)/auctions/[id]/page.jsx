@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Container,
   Heading,
@@ -57,7 +57,7 @@ const STATUS_COLORS = {
 export default function AuctionDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { on, joinAuction, leaveAuction } = useSocket();
   const toast = useToast();
 
@@ -99,6 +99,28 @@ export default function AuctionDetailPage() {
     }
   };
 
+  // Lightweight reconnect refresh — public endpoints only (no auth-required calls
+  // like getAutoBid that could trigger the 401 interceptor and force a logout).
+  const reconnectRefresh = async () => {
+    try {
+      const [auctionRes, bidsRes] = await Promise.all([
+        auctionsApi.getOne(id),
+        bidsApi.getAuctionBids(id),
+      ]);
+      const a = auctionRes.data.data;
+      setAuction(a);
+      setBids(bidsRes.data.data || []);
+      setIsMyLead(
+        a.currentBidder?._id === user?._id || a.currentBidder === user?._id,
+      );
+    } catch (_) {}
+  };
+
+  const reconnectRefreshRef = useRef(reconnectRefresh);
+  useEffect(() => {
+    reconnectRefreshRef.current = reconnectRefresh;
+  });
+
   useEffect(() => {
     fetchData();
     joinAuction(id);
@@ -107,14 +129,22 @@ export default function AuctionDetailPage() {
 
   // Real-time new bid
   useEffect(() => {
-    const cleanup = on("new_bid", (data) => {
-      if (data.auctionId !== id) return;
+    // On reconnect: re-sync public auction data only.
+    // We deliberately avoid calling getAutoBid here — it's an auth-required
+    // endpoint, and a 401 from it would trigger the global interceptor and log
+    // the user out mid-session.
+    const cleanupConnect = on("connect", () => reconnectRefreshRef.current());
 
+    const cleanup = on("new_bid", (data) => {
+      const auctionData = data.auction;
+      if (!auctionData || auctionData._id?.toString() !== id) return;
+
+      const bidData = data.bid;
       const newBid = {
-        _id: Date.now().toString(),
-        bidder: { name: data.bidderName, _id: data.bidderId },
-        amount: data.amount,
-        createdAt: new Date().toISOString(),
+        _id: bidData?._id || Date.now().toString(),
+        bidder: bidData?.bidder || auctionData.currentBidder,
+        amount: auctionData.currentBid,
+        createdAt: bidData?.createdAt || new Date().toISOString(),
         status: "active",
       };
 
@@ -123,23 +153,29 @@ export default function AuctionDetailPage() {
         prev
           ? {
               ...prev,
-              currentBid: data.amount,
-              currentBidder: { _id: data.bidderId, name: data.bidderName },
-              totalBids: (prev.totalBids || 0) + 1,
+              currentBid: auctionData.currentBid,
+              currentBidder: auctionData.currentBidder,
+              totalBids: auctionData.totalBids,
             }
           : prev,
       );
 
-      setIsMyLead(data.bidderId === user?._id);
+      const newLeaderId = auctionData.currentBidder?._id?.toString();
+      setIsMyLead(newLeaderId === user?._id);
 
-      if (data.bidderId !== user?._id) {
+      if (newLeaderId !== user?._id) {
         toast({
-          title: "New bid placed!",
-          description: `${data.bidderName} bid ${data.amount} credits`,
+          title: bidData?.isAutoBid ? "⚡ Auto-bid placed!" : "New bid placed!",
+          description: `${auctionData.currentBidder?.name} bid ${auctionData.currentBid} credits`,
           status: "info",
           duration: 3000,
         });
       }
+    });
+
+    // Sync credits whenever the server modifies them (auto-bid deduct/refund)
+    const cleanupCredits = on("credit_updated", ({ credits }) => {
+      updateUser({ credits });
     });
 
     const cleanupEnded = on("auction_ended", (data) => {
@@ -163,7 +199,9 @@ export default function AuctionDetailPage() {
     });
 
     return () => {
+      cleanupConnect?.();
       cleanup?.();
+      cleanupCredits?.();
       cleanupEnded?.();
     };
   }, [on, id, user]);

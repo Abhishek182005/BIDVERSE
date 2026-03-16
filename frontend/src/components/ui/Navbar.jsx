@@ -35,10 +35,10 @@ import {
   AtSignIcon,
   AttachmentIcon,
   UnlockIcon,
-  StarIcon,
 } from "@chakra-ui/icons";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
@@ -94,7 +94,13 @@ export default function Navbar() {
           style={{ textDecoration: "none" }}
         >
           <HStack spacing={2}>
-            <StarIcon color='brand.400' boxSize={5} />
+            <Image
+              src='/auctionfavicon.png'
+              alt='BidVerse'
+              width={28}
+              height={28}
+              style={{ borderRadius: "6px" }}
+            />
             <Heading size='sm' className='gradient-text'>
               BidVerse
             </Heading>

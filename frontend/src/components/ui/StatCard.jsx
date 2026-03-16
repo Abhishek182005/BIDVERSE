@@ -72,7 +72,7 @@ export default function StatCard({
         border='1px solid'
         borderColor={c.border}
         borderRadius='xl'
-        p={5}
+        p={{ base: 3, md: 5 }}
         transition='all 0.3s'
         position='relative'
         overflow='hidden'
@@ -90,18 +90,23 @@ export default function StatCard({
           bg={`linear-gradient(90deg, transparent, ${c.glow}, transparent)`}
         />
 
-        <HStack justify='space-between' mb={3}>
+        <HStack justify='space-between' mb={{ base: 2, md: 3 }}>
           <Box /> {/* spacer */}
-          <Box bg={c.bg} p={2} borderRadius='lg'>
+          <Box bg={c.bg} p={{ base: 1.5, md: 2 }} borderRadius='lg'>
             {icon}
           </Box>
         </HStack>
 
         <Stat flex={1}>
-          <StatLabel color='whiteAlpha.600' fontSize='sm'>
+          <StatLabel color='whiteAlpha.600' fontSize={{ base: "xs", md: "sm" }}>
             {label}
           </StatLabel>
-          <StatNumber fontSize='2xl' fontWeight={800} color={c.text} mt={1}>
+          <StatNumber
+            fontSize={{ base: "xl", md: "2xl" }}
+            fontWeight={800}
+            color={c.text}
+            mt={1}
+          >
             {value}
           </StatNumber>
           <StatHelpText

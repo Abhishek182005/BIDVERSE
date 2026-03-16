@@ -56,6 +56,7 @@ export default function AuctionForm({
   onSubmit,
   isLoading,
   submitLabel = "Create Auction",
+  restrictedEdit = false,
 }) {
   const toast = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -188,6 +189,7 @@ export default function AuctionForm({
           <Input
             placeholder='e.g. Vintage Rolex Submariner 1967'
             {...inputProps}
+            isDisabled={restrictedEdit}
             {...register("title", {
               required: "Title is required",
               minLength: { value: 5, message: "Minimum 5 characters" },
@@ -337,6 +339,7 @@ export default function AuctionForm({
             <Input
               type='datetime-local'
               {...inputProps}
+              isDisabled={restrictedEdit}
               {...register("startTime", { required: "Start time is required" })}
             />
             <FormErrorMessage>{errors.startTime?.message}</FormErrorMessage>
@@ -347,6 +350,7 @@ export default function AuctionForm({
             <Input
               type='datetime-local'
               {...inputProps}
+              isDisabled={restrictedEdit}
               {...register("endTime", { required: "End time is required" })}
             />
             <FormErrorMessage>{errors.endTime?.message}</FormErrorMessage>
@@ -366,9 +370,10 @@ export default function AuctionForm({
                 <FormLabel fontSize='sm'>Minimum Bid (credits) *</FormLabel>
                 <NumberInput
                   value={value}
-                  onChange={(_, val) => onChange(val)}
+                  onChange={(str, num) => onChange(isNaN(num) ? 0 : num)}
                   min={1}
                   max={1000000}
+                  isDisabled={restrictedEdit}
                 >
                   <NumberInputField {...inputProps} />
                   <NumberInputStepper>
@@ -393,9 +398,10 @@ export default function AuctionForm({
                 <FormLabel fontSize='sm'>Bid Increment (credits) *</FormLabel>
                 <NumberInput
                   value={value}
-                  onChange={(_, val) => onChange(val)}
+                  onChange={(str, num) => onChange(isNaN(num) ? 0 : num)}
                   min={1}
                   max={100000}
+                  isDisabled={restrictedEdit}
                 >
                   <NumberInputField {...inputProps} />
                   <NumberInputStepper>
