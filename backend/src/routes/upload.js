@@ -45,7 +45,12 @@ router.post(
         .status(400)
         .json({ success: false, message: "No file uploaded" });
     }
-    const url = `${process.env.API_BASE_URL || "http://localhost:5000"}/uploads/${req.file.filename}`;
+    // Ensure API_BASE_URL ends without a slash
+    const base = (process.env.API_BASE_URL || "http://localhost:5000").replace(
+      /\/$/,
+      "",
+    );
+    const url = `${base}/uploads/${req.file.filename}`;
     res.json({ success: true, url });
   },
 );
