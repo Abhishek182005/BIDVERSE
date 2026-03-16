@@ -24,10 +24,11 @@ const auctionSchema = new mongoose.Schema(
       enum: [
         "Art",
         "Electronics",
-        "Jewelry",
+        "Jewellery",
         "Collectibles",
-        "Fashion",
+        "Clothing",
         "Vehicles",
+        "Sports",
         "Real Estate",
         "Other",
       ],
